@@ -42,7 +42,8 @@ git push -u origin ios-build
 
 推送后自动触发；也可到 GitHub 仓库页面 → Actions → **iOS Build** → Run workflow 手动触发。
 
-- 耗时约 15~30 分钟。
+- 耗时约 15~30 分钟（免费私有仓库只能用 Intel 版 `macos-13` 云电脑，macos-14/Apple Silicon
+  需付费计划或公开仓库，报错形如 `configuration 'macos-14-arm64-us-xl' is not supported`）。
 - 成功后在 run 详情页底部 **Artifacts** 下载 `Haizeiwang-ios-unsigned`（即 ipa）。
 - 失败时把 Actions 页面红色报错（或 build-log artifact）发给 AI 排查，改完重新推送即可，
   迭代很快。
