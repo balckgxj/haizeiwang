@@ -18,7 +18,9 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14          # Apple Silicon，Xcode 15.x
+    # 免费私有仓库只能用 Intel 版 macos-13（macos-14/arm64 需付费或公开仓库）
+    # Intel 机器交叉编译 iOS arm64 没有问题
+    runs-on: macos-13
     timeout-minutes: 90
 
     steps:
