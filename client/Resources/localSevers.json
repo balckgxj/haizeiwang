@@ -1,0 +1,12 @@
+{
+    "defaultSeverID": 1,
+    "severs": [
+        {
+            "id": 1,
+            "name": "本地测试服",
+            "address": "127.0.0.1",
+            "port": 25524,
+            "state": "general"
+        }
+    ]
+}

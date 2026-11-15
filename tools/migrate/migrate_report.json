@@ -1,0 +1,23 @@
+{
+ "total": 8,
+ "rules": {
+  "vec_count2": 2,
+  "single_ref": 5,
+  "vec_count": 1
+ },
+ "files": {
+  "client\\Classes\\CCBLuaContainer.cpp": {
+   "vec_count2": 1
+  },
+  "client\\Classes\\CCBManager.cpp": {
+   "single_ref": 3
+  },
+  "client\\Classes\\CCBScriptContainer.cpp": {
+   "vec_count2": 1,
+   "single_ref": 2
+  },
+  "client\\Classes\\MainFrame.cpp": {
+   "vec_count": 1
+  }
+ }
+}

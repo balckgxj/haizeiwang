@@ -1,0 +1,681 @@
+{
+  "count": 90,
+  "total_lines": 27373,
+  "failed": [],
+  "files": [
+    {
+      "file": "AccumulationConsume.lua",
+      "bytes": 18488,
+      "lines": 437,
+      "require": [
+        "AccumulationConsume_pb"
+      ]
+    },
+    {
+      "file": "AccumulationConsume_pb.lua",
+      "bytes": 55275,
+      "lines": 738,
+      "require": []
+    },
+    {
+      "file": "AccumulationLogin.lua",
+      "bytes": 15082,
+      "lines": 391,
+      "require": [
+        "AccumulationLogin_pb"
+      ]
+    },
+    {
+      "file": "AccumulationLogin_pb.lua",
+      "bytes": 53556,
+      "lines": 738,
+      "require": []
+    },
+    {
+      "file": "AddPowerPage.lua",
+      "bytes": 11456,
+      "lines": 311,
+      "require": [
+        "UserBasicInfo_pb",
+        "GetAdventurePowerInfo_pb",
+        "AddPower_pb",
+        "UserBattle_pb"
+      ]
+    },
+    {
+      "file": "AddPower_pb.lua",
+      "bytes": 3175,
+      "lines": 82,
+      "require": []
+    },
+    {
+      "file": "AdventureCharge_pb.lua",
+      "bytes": 63845,
+      "lines": 893,
+      "require": []
+    },
+    {
+      "file": "AdventureConvert.lua",
+      "bytes": 18751,
+      "lines": 475,
+      "require": [
+        "Convert_pb"
+      ]
+    },
+    {
+      "file": "AdventureInfo_pb.lua",
+      "bytes": 8609,
+      "lines": 148,
+      "require": []
+    },
+    {
+      "file": "CallOfLufei.lua",
+      "bytes": 4520,
+      "lines": 153,
+      "require": [
+        "CommonPage",
+        "Exchange_pb",
+        "GoodsShowListPage"
+      ]
+    },
+    {
+      "file": "CallOfLufeiHelpPage.lua",
+      "bytes": 3467,
+      "lines": 99,
+      "require": [
+        "CommonPage"
+      ]
+    },
+    {
+      "file": "CommonHelpPage.lua",
+      "bytes": 3397,
+      "lines": 97,
+      "require": [
+        "CommonPage"
+      ]
+    },
+    {
+      "file": "CommonPage.lua",
+      "bytes": 1266,
+      "lines": 44,
+      "require": []
+    },
+    {
+      "file": "Convert_pb.lua",
+      "bytes": 51245,
+      "lines": 926,
+      "require": []
+    },
+    {
+      "file": "DecisionPage.lua",
+      "bytes": 1554,
+      "lines": 52,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "DeepSeaTreasure.lua",
+      "bytes": 21785,
+      "lines": 478,
+      "require": [
+        "DeepwaterExplore_pb",
+        "IncPbCommon",
+        "GoodsShowSinglePage"
+      ]
+    },
+    {
+      "file": "DeepwaterExplore_pb.lua",
+      "bytes": 49562,
+      "lines": 786,
+      "require": []
+    },
+    {
+      "file": "DiscipleSelect.lua",
+      "bytes": 10450,
+      "lines": 320,
+      "require": []
+    },
+    {
+      "file": "Exchange_pb.lua",
+      "bytes": 32115,
+      "lines": 588,
+      "require": []
+    },
+    {
+      "file": "ForgeEquipHelpPage.lua",
+      "bytes": 4343,
+      "lines": 114,
+      "require": []
+    },
+    {
+      "file": "ForgeEquipPiecePage.lua",
+      "bytes": 11994,
+      "lines": 282,
+      "require": [
+        "ForgeEquipPiece_pb",
+        "IncPbCommon"
+      ]
+    },
+    {
+      "file": "ForgeEquipPiece_pb.lua",
+      "bytes": 14949,
+      "lines": 247,
+      "require": []
+    },
+    {
+      "file": "ForgeEquipToolsPicPage.lua",
+      "bytes": 6554,
+      "lines": 161,
+      "require": []
+    },
+    {
+      "file": "GetAdventurePowerInfo_pb.lua",
+      "bytes": 4071,
+      "lines": 82,
+      "require": []
+    },
+    {
+      "file": "GoddessAutoReceive.lua",
+      "bytes": 892,
+      "lines": 21,
+      "require": [
+        "GoddessRebate_pb"
+      ]
+    },
+    {
+      "file": "GoddessFeedback.lua",
+      "bytes": 10488,
+      "lines": 264,
+      "require": [
+        "GoddessRebate_pb",
+        "IncPbCommon",
+        "GoodsShowListPage"
+      ]
+    },
+    {
+      "file": "GoddessFeedbackHelpPage.lua",
+      "bytes": 1248,
+      "lines": 40,
+      "require": []
+    },
+    {
+      "file": "GoddessRebate_pb.lua",
+      "bytes": 58801,
+      "lines": 923,
+      "require": []
+    },
+    {
+      "file": "GoodsShowListPage.lua",
+      "bytes": 4874,
+      "lines": 125,
+      "require": []
+    },
+    {
+      "file": "GoodsShowSinglePage.lua",
+      "bytes": 4321,
+      "lines": 109,
+      "require": []
+    },
+    {
+      "file": "IncPbCommon.lua",
+      "bytes": 15767,
+      "lines": 511,
+      "require": [
+        "UserSoulInfo_pb",
+        "UserSkillInfo_pb",
+        "SkillBookInfo_pb",
+        "UserEquipInfo_pb",
+        "UserDiscipleInfo_pb",
+        "UserToolInfo_pb",
+        "UserEquipInfo_pb",
+        "UserBattleArray_pb",
+        "UserBattle_pb",
+        "AdventureInfo_pb"
+      ]
+    },
+    {
+      "file": "IncScriptPage.lua",
+      "bytes": 1751,
+      "lines": 41,
+      "require": []
+    },
+    {
+      "file": "LeagueStruct_battle_pb.lua",
+      "bytes": 48800,
+      "lines": 906,
+      "require": []
+    },
+    {
+      "file": "LeagueStruct_ext_pb.lua",
+      "bytes": 89622,
+      "lines": 1619,
+      "require": []
+    },
+    {
+      "file": "LeagueStruct_pb.lua",
+      "bytes": 94636,
+      "lines": 1759,
+      "require": []
+    },
+    {
+      "file": "LianMeng.lua",
+      "bytes": 20782,
+      "lines": 533,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_battle_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengAccedePage.lua",
+      "bytes": 7868,
+      "lines": 205,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengAddPage.lua",
+      "bytes": 6992,
+      "lines": 175,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengBattleBidEnterPage.lua",
+      "bytes": 5638,
+      "lines": 162,
+      "require": [
+        "LianMengPage"
+      ]
+    },
+    {
+      "file": "LianMengBattleBidPage.lua",
+      "bytes": 7219,
+      "lines": 159,
+      "require": []
+    },
+    {
+      "file": "LianMengBattleConfirmPage.lua",
+      "bytes": 7946,
+      "lines": 174,
+      "require": []
+    },
+    {
+      "file": "LianMengBattleMSGPage.lua",
+      "bytes": 4637,
+      "lines": 120,
+      "require": []
+    },
+    {
+      "file": "LianMengBattlePage.lua",
+      "bytes": 12401,
+      "lines": 295,
+      "require": []
+    },
+    {
+      "file": "LianMengBattleResaultPage.lua",
+      "bytes": 22552,
+      "lines": 457,
+      "require": []
+    },
+    {
+      "file": "LianMengBattleTotemUsePage.lua",
+      "bytes": 4452,
+      "lines": 114,
+      "require": []
+    },
+    {
+      "file": "LianMengBattleTotemUsePopupPage.lua",
+      "bytes": 2641,
+      "lines": 72,
+      "require": []
+    },
+    {
+      "file": "LianMengBitResault.lua",
+      "bytes": 1709,
+      "lines": 57,
+      "require": [
+        "LianMeng",
+        "LianMengRobRank"
+      ]
+    },
+    {
+      "file": "LianMengBitResault2.lua",
+      "bytes": 6473,
+      "lines": 160,
+      "require": [
+        "LianMeng",
+        "LianMengRobRank"
+      ]
+    },
+    {
+      "file": "LianMengBuildingPage.lua",
+      "bytes": 7811,
+      "lines": 177,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengCreatePage.lua",
+      "bytes": 5327,
+      "lines": 132,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengHelpPage.lua",
+      "bytes": 4253,
+      "lines": 115,
+      "require": []
+    },
+    {
+      "file": "LianMengJinGongPage.lua",
+      "bytes": 3918,
+      "lines": 95,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengJuanXianPage.lua",
+      "bytes": 5311,
+      "lines": 138,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengMemberPage.lua",
+      "bytes": 16483,
+      "lines": 396,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengPage.lua",
+      "bytes": 15146,
+      "lines": 359,
+      "require": [
+        "OP_League_pb",
+        "LianMeng",
+        "lianmenghuizhang",
+        "bit"
+      ]
+    },
+    {
+      "file": "LianMengRankingPage.lua",
+      "bytes": 5014,
+      "lines": 128,
+      "require": [
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengRobRank.lua",
+      "bytes": 7492,
+      "lines": 190,
+      "require": [
+        "LianMeng"
+      ]
+    },
+    {
+      "file": "LianMengShopBuyPage.lua",
+      "bytes": 3721,
+      "lines": 99,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengShopPage.lua",
+      "bytes": 15714,
+      "lines": 356,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb",
+        "IncPbCommon"
+      ]
+    },
+    {
+      "file": "LianMengTotem.lua",
+      "bytes": 11317,
+      "lines": 282,
+      "require": [
+        "LianMeng",
+        "LeagueStruct_pb",
+        "LeagueStruct_ext_pb"
+      ]
+    },
+    {
+      "file": "LianMengTotemAddCountPage.lua",
+      "bytes": 3328,
+      "lines": 79,
+      "require": []
+    },
+    {
+      "file": "LianMengTotemFlagsListPage.lua",
+      "bytes": 8391,
+      "lines": 191,
+      "require": []
+    },
+    {
+      "file": "LianMengTotemRob.lua",
+      "bytes": 11632,
+      "lines": 279,
+      "require": [
+        "LianMeng",
+        "LianMengRobRank",
+        "UserBattle_pb",
+        "LeagueStruct_ext_pb",
+        "LianMengBitResault2"
+      ]
+    },
+    {
+      "file": "LianMengTotemRobFlagsPopPage.lua",
+      "bytes": 2835,
+      "lines": 68,
+      "require": []
+    },
+    {
+      "file": "ListenMessage.lua",
+      "bytes": 702,
+      "lines": 20,
+      "require": []
+    },
+    {
+      "file": "OP_League_pb.lua",
+      "bytes": 22923,
+      "lines": 358,
+      "require": []
+    },
+    {
+      "file": "RechargeFeedback.lua",
+      "bytes": 12691,
+      "lines": 349,
+      "require": [
+        "AdventureCharge_pb",
+        "CommonHelpPage",
+        "GoodsShowListPage"
+      ]
+    },
+    {
+      "file": "SkillBookInfo_pb.lua",
+      "bytes": 7920,
+      "lines": 137,
+      "require": []
+    },
+    {
+      "file": "TableManagerForLua.lua",
+      "bytes": 8304,
+      "lines": 228,
+      "require": [
+        "IncPbCommon"
+      ]
+    },
+    {
+      "file": "UserBasicInfo_pb.lua",
+      "bytes": 18016,
+      "lines": 334,
+      "require": []
+    },
+    {
+      "file": "UserBattleArray_pb.lua",
+      "bytes": 15559,
+      "lines": 247,
+      "require": []
+    },
+    {
+      "file": "UserBattle_pb.lua",
+      "bytes": 48703,
+      "lines": 813,
+      "require": []
+    },
+    {
+      "file": "UserDiscipleInfo_pb.lua",
+      "bytes": 13049,
+      "lines": 214,
+      "require": []
+    },
+    {
+      "file": "UserEquipInfo_pb.lua",
+      "bytes": 10293,
+      "lines": 181,
+      "require": []
+    },
+    {
+      "file": "UserSkillInfo_pb.lua",
+      "bytes": 7713,
+      "lines": 148,
+      "require": []
+    },
+    {
+      "file": "UserSoulInfo_pb.lua",
+      "bytes": 5457,
+      "lines": 115,
+      "require": []
+    },
+    {
+      "file": "UserToolInfo_pb.lua",
+      "bytes": 5471,
+      "lines": 115,
+      "require": []
+    },
+    {
+      "file": "bit.lua",
+      "bytes": 2346,
+      "lines": 129,
+      "require": []
+    },
+    {
+      "file": "containers.lua",
+      "bytes": 2362,
+      "lines": 79,
+      "require": []
+    },
+    {
+      "file": "decoder.lua",
+      "bytes": 11835,
+      "lines": 336,
+      "require": []
+    },
+    {
+      "file": "descriptor.lua",
+      "bytes": 1988,
+      "lines": 65,
+      "require": []
+    },
+    {
+      "file": "encoder.lua",
+      "bytes": 15376,
+      "lines": 462,
+      "require": []
+    },
+    {
+      "file": "json.lua",
+      "bytes": 18715,
+      "lines": 527,
+      "require": []
+    },
+    {
+      "file": "lianmenghuizhang.lua",
+      "bytes": 14191,
+      "lines": 360,
+      "require": [
+        "OP_League_pb",
+        "LeagueStruct_ext_pb",
+        "LeagueStruct_pb",
+        "DecisionPage"
+      ]
+    },
+    {
+      "file": "listener.lua",
+      "bytes": 1340,
+      "lines": 51,
+      "require": []
+    },
+    {
+      "file": "main.lua",
+      "bytes": 5543,
+      "lines": 166,
+      "require": [
+        "LianMeng",
+        "GoddessAutoReceive",
+        "TableManagerForLua",
+        "IncScriptPage",
+        "ListenMessage"
+      ]
+    },
+    {
+      "file": "protobuf.lua",
+      "bytes": 36238,
+      "lines": 923,
+      "require": []
+    },
+    {
+      "file": "text_format.lua",
+      "bytes": 2510,
+      "lines": 79,
+      "require": []
+    },
+    {
+      "file": "type_checkers.lua",
+      "bytes": 2427,
+      "lines": 72,
+      "require": []
+    },
+    {
+      "file": "wire_format.lua",
+      "bytes": 3903,
+      "lines": 138,
+      "require": []
+    }
+  ]
+}

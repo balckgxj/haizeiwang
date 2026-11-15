@@ -1,0 +1,24 @@
+# 构建产物
+build/
+build-ios/
+
+# 本地工具与备份
+_tools/
+
+# 老版参考工程（体积大且不需要上云）
+reference/
+
+# 崩溃转储与运行日志
+*.dmp
+crash_stack.txt
+ab_flow.log
+*.log
+
+# IDE / 系统杂项
+.vs/
+.vscode/
+xcuserdata/
+DerivedData/
+*.xcuserstate
+.DS_Store
+Thumbs.db

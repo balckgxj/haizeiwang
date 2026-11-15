@@ -1,0 +1,79 @@
+# ---------------------------------------------------------------------------
+# iOS 云端构建（GitHub Actions 免费 macOS runner）
+#
+# 产出：未签名 ipa（artifact: Haizeiwang-ios-unsigned）
+# 后续：Windows 上用 Sideloadly + 个人 Apple ID 签名安装，见 docs/IOS_PACKAGING.md
+#
+# 触发：手动（workflow_dispatch）或推送到 ios-build 分支
+# ---------------------------------------------------------------------------
+name: iOS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ios-build]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+jobs:
+  build-ios:
+    runs-on: macos-14          # Apple Silicon，Xcode 15.x
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcode-select -p && xcodebuild -version && cmake --version
+
+      # CMake + iOS 工具链（CMAKE_SYSTEM_NAME=iOS，CMake >= 3.14 原生支持）
+      # IOS=TRUE 是 cocos 的 CocosConfigDefine 需要的变量
+      - name: Configure
+        run: |
+          cmake -S . -B build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DIOS=TRUE \
+            -DDEBUG_MODE=OFF
+
+      - name: Build
+        run: |
+          cmake --build build-ios --config Release --target Haizeiwang -- \
+            -jobs 4 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      # 未签名 .app -> Payload -> ipa（Sideloadly 会重新签名）
+      - name: Package unsigned ipa
+        run: |
+          APP=$(find build-ios -type d -name "Haizeiwang.app" | head -1)
+          echo "Found app: $APP"
+          test -n "$APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry Haizeiwang-ios-unsigned.ipa Payload
+          ls -lh Haizeiwang-ios-unsigned.ipa
+
+      - name: Upload ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Haizeiwang-ios-unsigned
+          path: Haizeiwang-ios-unsigned.ipa
+          retention-days: 14
+
+      # 编译失败时把完整日志传上来，便于远程排查
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: |
+            build-ios/CMakeFiles/CMakeOutput.log
+            build-ios/CMakeFiles/CMakeError.log
+          retention-days: 7
+          if-no-files-found: ignore
