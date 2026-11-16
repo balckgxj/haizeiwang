@@ -43,6 +43,11 @@
 #elif defined(_M_IX86) || defined(__i386__)
 #define GOOGLE_PROTOBUF_ARCH_IA32 1
 #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+#elif defined(__arm64__) || defined(__aarch64__)
+// [haizei] protobuf 2.5 写于 arm64 之前；iOS arm64 走 Apple OSAtomic 分支，
+// 这里补上 64 位定义，Atomic64 才会存在（atomicops.h / macosx 实现依赖它）。
+#define GOOGLE_PROTOBUF_ARCH_ARM64 1
+#define GOOGLE_PROTOBUF_ARCH_64_BIT 1
 #elif defined(__ARMEL__)
 #define GOOGLE_PROTOBUF_ARCH_ARM 1
 #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
