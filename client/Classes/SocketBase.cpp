@@ -83,11 +83,8 @@ namespace GameCommon
 	{
 		struct sockaddr_in remote_sin;
 
-#ifdef CC_TARGET_OS_IPHONE
-		unsigned int addlen = sizeof(remote_sin);
-#else
-		int addlen = sizeof(remote_sin);
-#endif
+		// [haizei] 统一用 socklen_t（各平台 socket API 的形参类型），避免 int/socklen_t 不匹配
+		socklen_t addlen = sizeof(remote_sin);
 		memset(&remote_sin, 0, addlen);
 
 		int ret = recvfrom(sock, buf, len, flag, (struct sockaddr*)&remote_sin, &addlen);
@@ -199,11 +196,8 @@ namespace GameCommon
 		}
 		int newsock;
 		struct sockaddr_in remote_sin;
-#ifdef CC_TARGET_OS_IPHONE
-		unsigned int len = sizeof(remote_sin);
-#else
-		int len = sizeof(remote_sin);
-#endif
+		// [haizei] 统一用 socklen_t
+		socklen_t len = sizeof(remote_sin);
 
 		memset(&remote_sin, 0, len);
 		newsock = accept(sock, (struct sockaddr*)&remote_sin, &len);
@@ -284,11 +278,8 @@ namespace GameCommon
 		}
 
 		struct sockaddr addr;
-#ifdef CC_TARGET_OS_IPHONE
-		unsigned int addrlen = sizeof(addr);
-#else
-		int addrlen = sizeof(addr);
-#endif
+		// [haizei] 统一用 socklen_t
+		socklen_t addrlen = sizeof(addr);
 		int ret = getpeername(sock, &addr, &addrlen);
 		if(ret < 0)
 		{
@@ -316,11 +307,8 @@ namespace GameCommon
 		}
 
 		struct sockaddr addr;
-#ifdef CC_TARGET_OS_IPHONE
-		unsigned int addrlen = sizeof(addr);
-#else
-		int addrlen = sizeof(addr);
-#endif
+		// [haizei] 统一用 socklen_t
+		socklen_t addrlen = sizeof(addr);
 		int ret = getsockname(sock, &addr, &addrlen);
 		if(ret < 0)
 		{
@@ -343,11 +331,8 @@ namespace GameCommon
 	int geterror(SOCKET sock)
 	{
 		int so_error = 0;
-#ifdef CC_TARGET_OS_IPHONE
-		unsigned int len = sizeof(so_error);
-#else
-		int len = sizeof(so_error);
-#endif
+		// [haizei] 统一用 socklen_t
+		socklen_t len = sizeof(so_error);
 		getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&so_error), &len);
 		return so_error;
 	}
