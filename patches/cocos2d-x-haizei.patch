@@ -13,6 +13,30 @@ index 4525083..e88772c 100644
       if(IOS)
           set(APPLE TRUE)
           set(PLATFORM_FOLDER ios)
+diff --git a/cocos/2d/CCFontAtlas.cpp b/cocos/2d/CCFontAtlas.cpp
+index 7253947..682ddbe 100644
+--- a/cocos/2d/CCFontAtlas.cpp
++++ b/cocos/2d/CCFontAtlas.cpp
+@@ -130,7 +130,8 @@ FontAtlas::~FontAtlas()
+ #if CC_TARGET_PLATFORM != CC_PLATFORM_WIN32 && CC_TARGET_PLATFORM != CC_PLATFORM_WINRT && CC_TARGET_PLATFORM != CC_PLATFORM_ANDROID
+     if (_iconv)
+     {
+-        iconv_close(_iconv);
++        // [haizei] iOS 18.5 SDK 的 iconv_close 要求 iconv_t，void* 不能隐式转换
++        iconv_close((iconv_t)_iconv);
+         _iconv = nullptr;
+     }
+ #endif
+@@ -240,7 +241,8 @@ void FontAtlas::conversionU32TOGB2312(const std::u32string& u32Text, std::unorde
+             size_t inLen = strLen * 2;
+             size_t outLen = gb2312StrSize;
+ 
+-            iconv(_iconv, (char**)&pin, &inLen, &pout, &outLen);
++            // [haizei] iOS 18.5 SDK 的 iconv 要求 iconv_t，void* 不能隐式转换
++            iconv((iconv_t)_iconv, (char**)&pin, &inLen, &pout, &outLen);
+         }
+ #endif
+     }
 diff --git a/cocos/2d/CCMenu.cpp b/cocos/2d/CCMenu.cpp
 index c59d559..d959629 100644
 --- a/cocos/2d/CCMenu.cpp
