@@ -6,6 +6,14 @@
 //  这样 204 个老源文件不需要逐个改 include / 类型名。
 // ---------------------------------------------------------------------------
 
+// GitHub Actions macOS runner 曾两次因海量警告日志（-Wdeprecated-declarations
+// 每个包含链重复输出，单次构建 11-24MB）+ 内存峰值被无征兆 kill（日志截断）。
+// 命令行 -Wno 标志会被 xcodebuild 的 @common-args.resp 顺序覆盖，
+// pragma 在强制包含头文件中先于一切代码生效，是唯一可靠的屏蔽点。
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include "cocos-ext.h"
 #include "CCLuaEngine.h"   // 阶段一的 Lua 占位实现（含 CCLuaEngine / ScriptEngineManager）
 
