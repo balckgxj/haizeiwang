@@ -54,7 +54,7 @@
         return NULL;
     }
     
-    if ((buf = malloc(len)) == NULL) {
+    if ((buf = (char*)malloc(len)) == NULL) {  // [haizei] ObjC++ 下 void* 需显式转换
         printf("Could not allocate memory. error!\n");
         return NULL;
     }
