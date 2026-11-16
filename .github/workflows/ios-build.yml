@@ -44,6 +44,23 @@ jobs:
           git -C engine/cocos2d-x apply --whitespace=nowarn \
             "$GITHUB_WORKSPACE/patches/cocos2d-x-haizei.patch"
 
+      # cocos2d-x 的 external/ 第三方库被 .gitignore 排除，需单独下载 v3-deps-158（约 141MB）。
+      # 官方 download-deps.py 用 Python2 urllib2，macOS runner 没有，改用 curl + unzip。
+      - name: Download cocos2d-x third-party deps
+        run: |
+          DEPS_TAG=$(python3 -c "import json;print(json.load(open('engine/cocos2d-x/external/config.json'))['version'])")
+          echo "deps version: $DEPS_TAG"
+          curl -fL --retry 3 -o cocos-deps.zip \
+            "https://github.com/cocos2d/cocos2d-x-3rd-party-libs-bin/archive/refs/tags/${DEPS_TAG}.zip"
+          unzip -q cocos-deps.zip
+          # 包内根目录是 cocos2d-x-3rd-party-libs-bin-<version>，其下内容拷进 external/
+          SRC=$(find . -maxdepth 1 -type d -name 'cocos2d-x-3rd-party-libs-bin-*' | head -1)
+          echo "extracted root: $SRC"
+          test -f "$SRC/CMakeLists.txt"
+          cp -R "$SRC"/. engine/cocos2d-x/external/
+          test -f engine/cocos2d-x/external/CMakeLists.txt
+          rm -rf cocos-deps.zip "$SRC"
+
       - name: Show Xcode version
         run: xcode-select -p && xcodebuild -version && cmake --version
 
