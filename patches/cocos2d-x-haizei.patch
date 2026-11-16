@@ -1,0 +1,1077 @@
+diff --git a/cocos/2d/CCMenu.cpp b/cocos/2d/CCMenu.cpp
+index c59d559..d959629 100644
+--- a/cocos/2d/CCMenu.cpp
++++ b/cocos/2d/CCMenu.cpp
+@@ -34,6 +34,8 @@ THE SOFTWARE.
+ #include "platform/CCStdC.h"
+ 
+ #include <vector>
++#include <cstdlib>
++#include <typeinfo>
+ 
+ using namespace std;
+ 
+@@ -162,12 +164,15 @@ bool Menu::initWithArray(const Vector<MenuItem*>& arrayOfItems)
+         
+         auto touchListener = EventListenerTouchOneByOne::create();
+         touchListener->setSwallowTouches(true);
+-        
++
+         touchListener->onTouchBegan = CC_CALLBACK_2(Menu::onTouchBegan, this);
+         touchListener->onTouchMoved = CC_CALLBACK_2(Menu::onTouchMoved, this);
+         touchListener->onTouchEnded = CC_CALLBACK_2(Menu::onTouchEnded, this);
+         touchListener->onTouchCancelled = CC_CALLBACK_2(Menu::onTouchCancelled, this);
+-        
++
++        // [haizei] 存一份引用，供 setScrollViewChild() 动态调整吞触摸行为
++        _menuTouchListener = touchListener;
++
+         _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, this);
+         
+         return true;
+@@ -251,14 +256,42 @@ void Menu::removeChild(Node* child, bool cleanup)
+ 
+ //Menu - Events
+ 
++// [haizei] 老项目 2.x CCMenu::setScrollViewChild / setTouchArea 等价实现
++void Menu::setScrollViewChild(bool child)
++{
++    _scrollViewChild = child;
++    // 2.x 原版：registerWithTouchDispatcher 里 addTargetedDelegate(this, -128, !m_bScrollViewChild)
++    // —— scrollview 内的 menu 不吞触摸，滚动视图才能收到拖动事件
++    if (_menuTouchListener)
++    {
++        _menuTouchListener->setSwallowTouches(!child);
++    }
++}
++
++void Menu::setTouchArea(const Rect& area, Node* provider)
++{
++    _touchArea = area;
++    _touchAreaProvider = provider;
++}
++
+ bool Menu::onTouchBegan(Touch* touch, Event* /*event*/)
+ {
++    // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出，默认完全静默
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
+     auto camera = Camera::getVisitingCamera();
++    if (sDiag)
++    {
++        CCLOG("[MenuDiag] begin sv=%d en=%d state=%d items=%d pos=(%.0f,%.0f) area=(%.0f,%.0f,%.0f,%.0f) prov=%p",
++              (int)_scrollViewChild, (int)_enabled, (int)_state, (int)_children.size(),
++              touch->getLocation().x, touch->getLocation().y,
++              _touchArea.origin.x, _touchArea.origin.y, _touchArea.size.width, _touchArea.size.height,
++              (void*)_touchAreaProvider);
++    }
+     if (_state != Menu::State::WAITING || ! _visible || !_enabled || !camera)
+     {
+         return false;
+     }
+-    
++
+     for (Node *c = this->_parent; c != nullptr; c = c->getParent())
+     {
+         if (c->isVisible() == false)
+@@ -266,7 +299,40 @@ bool Menu::onTouchBegan(Touch* touch, Event* /*event*/)
+             return false;
+         }
+     }
++
++    // [haizei] scrollview 内的 menu：命中限制在滚动视口内（世界坐标矩形），
++    // 并记录起始触摸点，供 onTouchEnded 的位移阈值判断
++    if (_scrollViewChild)
++    {
++        // [parity] 老版 2.x 的 mTouchArea 业务代码从未赋值（构造里未初始化），
++        // 实际效果等于没有视口命中限制，命中完全交给 itemForTouch。
++        // 移植时 compat 的 _setChildMenu 塞入了 _getViewRect()，但该矩形是
++        // frame/物理坐标量级（实测 origin y=730、viewSize w=580），而 3.x
++        // touch->getLocation() 是设计坐标（实测 62,346 / 90,30），两者不同坐标系，
++        // containsPoint 恒 false，会把 ScrollView 内所有按钮锁死。
++        // 因此这里对齐老版：只保留位移阈值所需的起始点，命中交给 getItemForTouch。
++        _touchStartWorldPos = touch->getLocation();
++    }
++
+     _selectedItem = this->getItemForTouch(touch, camera);
++    if (sDiag)
++    {
++        CCLOG("[MenuDiag] after hit selected=%p", (void*)_selectedItem);
++        if (!_selectedItem && _scrollViewChild)
++        {
++            for (const auto& item : _children)
++            {
++                MenuItem* child = dynamic_cast<MenuItem*>(item);
++                if (child && child->isVisible() && child->isEnabled())
++                {
++                    cocos2d::Rect bb = child->getBoundingBox();
++                    CCLOG("[MenuDiag] MISS child contentSize=(%.1f,%.1f) worldRect=(%.1f,%.1f,%.1f,%.1f)",
++                          child->getContentSize().width, child->getContentSize().height,
++                          bb.origin.x, bb.origin.y, bb.size.width, bb.size.height);
++                }
++            }
++        }
++    }
+ 
+     if (_selectedItem)
+     {
+@@ -280,13 +346,41 @@ bool Menu::onTouchBegan(Touch* touch, Event* /*event*/)
+     return false;
+ }
+ 
+-void Menu::onTouchEnded(Touch* /*touch*/, Event* /*event*/)
++void Menu::onTouchEnded(Touch* touch, Event* /*event*/)
+ {
+-    CCASSERT(_state == Menu::State::TRACKING_TOUCH, "[Menu ccTouchEnded] -- invalid state");
++    // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++    if (sDiag)
++    {
++        CCLOG("[MenuDiag] onTouchEnded state=%d selected=%p", (int)_state, (void*)_selectedItem);
++    }
++    // [haizei] 2.x 无此硬断言：引导步骤切换等场景会把触摸序列中的菜单
++    // 重建/置为空闲，TouchEnded 落到非 TRACKING_TOUCH 状态时 2.x 只是
++    // 忽略本次点击，3.x 直接 abort。改为静默忽略，对齐 2.x 行为。
++    if (_state != Menu::State::TRACKING_TOUCH)
++    {
++        if (sDiag)
++            CCLOG("[MenuDiag] onTouchEnded invalid state ignored");
++        return;
++    }
+     this->retain();
+     if (_selectedItem)
+     {
+         _selectedItem->unselected();
++        // [haizei] scrollview 内的 menu：位移超过阈值（拖动滚动）不激活按钮
++        if (_scrollViewChild && touch)
++        {
++            Vec2 np = touch->getLocation();
++            if (fabs(np.x - _touchStartWorldPos.x) >= 20.0f ||
++                fabs(np.y - _touchStartWorldPos.y) >= 20.0f)
++            {
++                _selectedItem = nullptr;
++                _state = Menu::State::WAITING;
++                _selectedWithCamera = nullptr;
++                this->release();
++                return;
++            }
++        }
+         _selectedItem->activate();
+     }
+     _state = Menu::State::WAITING;
+@@ -296,7 +390,19 @@ void Menu::onTouchEnded(Touch* /*touch*/, Event* /*event*/)
+ 
+ void Menu::onTouchCancelled(Touch* /*touch*/, Event* /*event*/)
+ {
+-    CCASSERT(_state == Menu::State::TRACKING_TOUCH, "[Menu ccTouchCancelled] -- invalid state");
++    // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++    if (sDiag)
++    {
++        CCLOG("[MenuDiag] onTouchCancelled state=%d selected=%p", (int)_state, (void*)_selectedItem);
++    }
++    // [haizei] 2.x 无此硬断言，状态不对时静默忽略（见 onTouchEnded 注释）
++    if (_state != Menu::State::TRACKING_TOUCH)
++    {
++        if (sDiag)
++            CCLOG("[MenuDiag] onTouchCancelled invalid state ignored");
++        return;
++    }
+     this->retain();
+     if (_selectedItem)
+     {
+@@ -308,7 +414,9 @@ void Menu::onTouchCancelled(Touch* /*touch*/, Event* /*event*/)
+ 
+ void Menu::onTouchMoved(Touch* touch, Event* /*event*/)
+ {
+-    CCASSERT(_state == Menu::State::TRACKING_TOUCH, "[Menu ccTouchMoved] -- invalid state");
++    // [haizei] 2.x 无此硬断言，状态不对时静默忽略（见 onTouchEnded 注释）
++    if (_state != Menu::State::TRACKING_TOUCH)
++        return;
+     MenuItem *currentItem = this->getItemForTouch(touch, _selectedWithCamera);
+     if (currentItem != _selectedItem)
+     {
+@@ -559,6 +667,7 @@ void Menu::alignItemsInRowsWithArray(const ValueVector& columns)
+ MenuItem* Menu::getItemForTouch(Touch *touch, const Camera *camera)
+ {
+     Vec2 touchLocation = touch->getLocation();
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
+     for (const auto &item: _children)
+     {
+         MenuItem* child = dynamic_cast<MenuItem*>(item);
+@@ -568,7 +677,41 @@ MenuItem* Menu::getItemForTouch(Touch *touch, const Camera *camera)
+         }
+         Rect rect;
+         rect.size = child->getContentSize();
+-        if (isScreenPointInRect(touchLocation, camera, child->getWorldToNodeTransform(), rect, nullptr))
++        Vec3 hitP;
++        bool hit = isScreenPointInRect(touchLocation, camera, child->getWorldToNodeTransform(), rect, &hitP);
++        if (sDiag && _scrollViewChild)
++        {
++            cocos2d::Rect bb = child->getBoundingBox();
++            cocos2d::Mat4 M = child->getNodeToWorldTransform();
++            cocos2d::Vec3 up = camera->unprojectGL(cocos2d::Vec3(touchLocation.x, touchLocation.y, -1.0f));
++            cocos2d::Vec2 conv = child->convertToNodeSpace(touchLocation);
++            CCLOG("[MenuDiag] TEST child cs=(%.1f,%.1f) worldRect=(%.1f,%.1f,%.1f,%.1f) touch=(%.1f,%.1f) Mtx=(%.1f,%.1f) Msx=%.3f unproj=(%.1f,%.1f) conv=(%.1f,%.1f) localP=(%.2f,%.2f) hit=%d",
++                  rect.size.width, rect.size.height,
++                  bb.origin.x, bb.origin.y, bb.size.width, bb.size.height,
++                  touchLocation.x, touchLocation.y,
++                  M.m[12], M.m[13], M.m[0], up.x, up.y, conv.x, conv.y, hitP.x, hitP.y, (int)hit);
++            // [haizei] 首个 item 时打印完整祖先链变换，定位坐标空间断点
++            if (child == _children.at(0))
++            {
++                cocos2d::Node* anc = child;
++                int depth = 0;
++                while (anc && depth < 12)
++                {
++                    cocos2d::Mat4 np = anc->getNodeToParentTransform();
++                    cocos2d::Size cs = anc->getContentSize();
++                    CCLOG("[MenuDiag] CHAIN[%d] %s pos=(%.1f,%.1f) scale=(%.2f,%.2f) anchor=(%.2f,%.2f) cs=(%.1f,%.1f) npT=[%.2f,%.2f | %.2f,%.2f] npPos=(%.1f,%.1f)",
++                          depth, typeid(*anc).name(),
++                          anc->getPosition().x, anc->getPosition().y,
++                          anc->getScaleX(), anc->getScaleY(),
++                          anc->getAnchorPoint().x, anc->getAnchorPoint().y,
++                          cs.width, cs.height,
++                          np.m[0], np.m[1], np.m[4], np.m[5], np.m[12], np.m[13]);
++                    anc = anc->getParent();
++                    ++depth;
++                }
++            }
++        }
++        if (hit)
+         {
+             return child;
+         }
+diff --git a/cocos/2d/CCMenu.h b/cocos/2d/CCMenu.h
+index d79ff0a..c75f1b1 100644
+--- a/cocos/2d/CCMenu.h
++++ b/cocos/2d/CCMenu.h
+@@ -161,6 +161,17 @@ public:
+     virtual void onTouchEnded(Touch* touch, Event* event) override;
+     virtual void onTouchCancelled(Touch* touch, Event* event) override;
+     virtual void onTouchMoved(Touch* touch, Event* event) override;
++
++    // [haizei] 老项目 2.x CCMenu 的 scrollview 协作扩展（原 setScrollViewChild/setTouchArea）：
++    // menu 位于 CCScrollView(compat) 容器内时：
++    //   1) 不吞触摸，让滚动视图也能收到拖动事件；
++    //   2) 触摸命中限制在滚动视口（世界坐标矩形）内；
++    //   3) 触摸位移小于阈值才激活按钮（拖动滚动时不误点）。
++    void setScrollViewChild(bool child);
++    // [parity] provider = 所属的 CCScrollView(compat) 视口节点。
++    // 缓存矩形在 setContainer() 阶段算出来时 ScrollView 还没进场景树，世界坐标无效；
++    // 因此触摸时用 provider 实时换算视口位置，避免 containsPoint 恒 false。
++    void setTouchArea(const Rect& area, Node* provider = nullptr);
+     
+     // overrides
+     virtual void removeChild(Node* child, bool cleanup) override;
+@@ -192,7 +203,12 @@ CC_CONSTRUCTOR_ACCESS:
+ 
+ protected:
+ 
+-
++    // [haizei] scrollview 协作状态（见 setScrollViewChild 注释）
++    bool _scrollViewChild = false;
++    Rect _touchArea;
++    Node* _touchAreaProvider = nullptr;
++    Vec2 _touchStartWorldPos;
++    EventListenerTouchOneByOne* _menuTouchListener = nullptr;
+ 
+     /** whether or not the menu will receive events */
+     bool _enabled;
+diff --git a/cocos/2d/CCMenuItem.cpp b/cocos/2d/CCMenuItem.cpp
+index 1e74cf1..87431ca 100644
+--- a/cocos/2d/CCMenuItem.cpp
++++ b/cocos/2d/CCMenuItem.cpp
+@@ -33,6 +33,7 @@ THE SOFTWARE.
+ #include "2d/CCLabel.h"
+ #include "base/ccUTF8.h"
+ #include <stdarg.h>
++#include <cstdlib>
+ 
+ NS_CC_BEGIN
+     
+@@ -99,6 +100,13 @@ void MenuItem::unselected()
+ 
+ void MenuItem::activate()
+ {
++    // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++    if (sDiag)
++    {
++        CCLOG("[MenuDiag] activate item=%p enabled=%d callback=%s",
++              (void*)this, (int)_enabled, _callback ? "set" : "NULL");
++    }
+     if (_enabled)
+     {
+         if( _callback )
+diff --git a/cocos/2d/CCSprite.cpp b/cocos/2d/CCSprite.cpp
+index 4cd1e3c..4eab8ee 100644
+--- a/cocos/2d/CCSprite.cpp
++++ b/cocos/2d/CCSprite.cpp
+@@ -176,6 +176,32 @@ bool Sprite::initWithFile(const std::string& filename)
+     _fileName = filename;
+     _fileType = 0;
+ 
++    // [haizei][compat 2.x] 帧缓存优先（与 setTexture(filename) 的兼容修复同语义）。
++    // 老版引擎的文件加载会重定向到图集帧（老 Resources 里没有 u_+1/u_+2/u_lock 等
++    // 散图，全在 mainScene.plist 图集里）；而新版导出的部分散图把图集帧的"画布"
++    // 裁掉了（如 u_+2.png 只剩 40x42 字形，老版帧是垫在 84x84 画布上居中）。
++    // 直接加载这种散图会让锚点(0,0)的槽位精灵整体左下偏移（阵容页船员空槽加号）。
++    // 图集帧自带 offset/originalSize，渲染结果就是完整画布，与 2.x 视觉等价；
++    // 未命中帧再走散图路径，行为与 3.x 原生一致。
++    {
++        SpriteFrame* frame = SpriteFrameCache::getInstance()->getSpriteFrameByName(filename);
++        if (frame == nullptr)
++        {
++            std::string baseName = filename;
++            size_t slashPos = baseName.find_last_of("/\\");
++            if (slashPos != std::string::npos)
++            {
++                frame = SpriteFrameCache::getInstance()->getSpriteFrameByName(baseName.substr(slashPos + 1));
++            }
++        }
++        if (frame != nullptr)
++        {
++            _fileName = filename;
++            _fileType = 1;
++            return initWithSpriteFrame(frame);
++        }
++    }
++
+     Texture2D *texture = _director->getTextureCache()->addImage(filename);
+     if (texture)
+     {
+@@ -184,6 +210,30 @@ bool Sprite::initWithFile(const std::string& filename)
+         return initWithTexture(texture, rect);
+     }
+ 
++    // [haizei] 文件不存在时按帧名查图集（getSpriteFrameByName 已带
++    // “去目录前缀 + 散图整张”的兼容回退）。老配置里大量路径形如
++    // "mainScene/u_icobg02.png"，图其实打进了 mainScene.plist 图集，
++    // 2.x 的部分调用点就是靠帧缓存命中的。查到帧就当帧初始化，
++    // 查不到再返回 false（避免调用方空指针）。
++    {
++        SpriteFrame* frame = SpriteFrameCache::getInstance()->getSpriteFrameByName(filename);
++        if (frame == nullptr)
++        {
++            std::string baseName = filename;
++            size_t slashPos = baseName.find_last_of("/\\");
++            if (slashPos != std::string::npos)
++            {
++                frame = SpriteFrameCache::getInstance()->getSpriteFrameByName(baseName.substr(slashPos + 1));
++            }
++        }
++        if (frame != nullptr)
++        {
++            _fileName = filename;
++            _fileType = 1;
++            return initWithSpriteFrame(frame);
++        }
++    }
++
+     // don't release here.
+     // when load texture failed, it's better to get a "transparent" sprite then a crashed program
+     // this->release();
+@@ -329,6 +379,11 @@ Sprite::Sprite()
+ 
+ Sprite::~Sprite()
+ {
++    // [haizei][CrashHunt] 渲染队列 use-after-free 排查：记录被释放的 Sprite 地址
++    static bool hunt = (std::getenv("HAIZEI_CRASH_HUNT") != nullptr);
++    if (hunt)
++        CCLOG("[SpriteFree] sprite=%p triCmd=%p file=%s", (void*)this,
++              (void*)&_trianglesCommand, _fileName.c_str());
+     CC_SAFE_FREE(_trianglesVertex);
+     CC_SAFE_FREE(_trianglesIndex);
+     CC_SAFE_RELEASE(_spriteFrame);
+@@ -362,12 +417,29 @@ static unsigned char cc_2x2_white_image[] = {
+ // MARK: texture
+ void Sprite::setTexture(const std::string &filename)
+ {
++    // [haizei][compat 2.x] 2.x 的 CCSprite::setTexture(const char*) 先按帧名查
++    // SpriteFrameCache（老版 spriteFrameByName 还会剥掉 "mainScene/" 目录前缀，
++    // 见 getSpriteFrameByName 的兼容逻辑），命中即 setDisplayFrame：用图集帧的
++    // offset/originalSize 布局（如 u_+2.png 40x42 字形垫在 84x84 原始画布上居中）。
++    // 3.x 只有"整张散图"路径：独立小图 (40x42) 会顶替 ccbi 原始画布 (84x84)，
++    // 锚点(0,0) 的槽位精灵整体左下偏移 ~22px，主页空位加号不再居中。
++    // 未命中帧再退回散图路径；加载失败保持原样（2.x pTexture==NULL 直接返回）。
++    SpriteFrame* frame = SpriteFrameCache::getInstance()->getSpriteFrameByName(filename);
++    if (frame)
++    {
++        setSpriteFrame(frame);
++        return;
++    }
+     Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(filename);
++    if (!texture)
++    {
++        // 2.x：加载失败直接返回，不改动当前显示
++        return;
++    }
+     setTexture(texture);
+     _unflippedOffsetPositionFromCenter = Vec2::ZERO;
+     Rect rect = Rect::ZERO;
+-    if (texture)
+-        rect.size = texture->getContentSize();
++    rect.size = texture->getContentSize();
+     setTextureRect(rect);
+ }
+ 
+@@ -1576,6 +1648,13 @@ void Sprite::setSpriteFrame(const std::string &spriteFrameName)
+ 
+ void Sprite::setSpriteFrame(SpriteFrame *spriteFrame)
+ {
++    // [haizei] ccbi 里的空精灵会传 nullptr（2.x OC 向 nil 发消息是 no-op，
++    // 教学引导 ChangeName.ccbi 等处大量空精灵），C++ 直接解引用会崩。
++    if (spriteFrame == nullptr)
++    {
++        CCLOG("[Sprite] setSpriteFrame(nullptr) ignored");
++        return;
++    }
+     // retain the sprite frame
+     // do not removed by SpriteFrameCache::removeUnusedSpriteFrames
+     if (_spriteFrame != spriteFrame)
+diff --git a/cocos/2d/CCSpriteFrameCache.cpp b/cocos/2d/CCSpriteFrameCache.cpp
+index 232ad0c..c20d3cb 100644
+--- a/cocos/2d/CCSpriteFrameCache.cpp
++++ b/cocos/2d/CCSpriteFrameCache.cpp
+@@ -270,6 +270,9 @@ void SpriteFrameCache::addSpriteFramesWithDictionary(ValueMap& dictionary, Textu
+         }
+         // add sprite frame
+         _spriteFramesCache.insertFrame(plist, spriteFrameName, spriteFrame);
++        // [haizei] 记录帧来源，供 miss 时懒加载重载（对齐 2.x 索引行为）
++        if (plist.compare(0, 3, "by#") != 0)
++            _lazyFramePlists[spriteFrameName] = plist;
+     }
+     _spriteFramesCache.markPlistFull(plist, true);
+     CC_SAFE_DELETE(image);
+@@ -524,6 +527,64 @@ void SpriteFrameCache::removeSpriteFramesFromTexture(Texture2D* texture)
+ SpriteFrame* SpriteFrameCache::getSpriteFrameByName(const std::string& name)
+ {
+     SpriteFrame* frame = _spriteFramesCache.at(name);
++    // [haizei] 2.x 的 CCSpriteFrameCache::spriteFrameByName 会把名字里的目录前缀
++    // 去掉再查一次（老 ccbi/脚本存的是 "mainScene/xxx.png"，图集里是 "xxx.png"），
++    // 3.x 取消了这个兼容查找，这里补回来。
++    if (!frame)
++    {
++        size_t slashPos = name.find_last_of("/\\");
++        if (slashPos != std::string::npos)
++        {
++            frame = _spriteFramesCache.at(name.substr(slashPos + 1));
++        }
++    }
++    if (!frame)
++    {
++        // [haizei] 2.x 散图兼容：老 ccbi/脚本引用了大量没打进图集的散图
++        // （loadingScene/u_login.png、person/u_qBbg.png …），
++        // 2.x 会退化成“按文件整张加载”，3.x 不会，这里补回来：
++        // 找得到文件就整张图作为一帧插入缓存。
++        std::string candidate = name;
++        std::string fullPath = FileUtils::getInstance()->fullPathForFilename(candidate);
++        if (fullPath.empty())
++        {
++            size_t slashPos = candidate.find_last_of("/\\");
++            if (slashPos != std::string::npos)
++            {
++                candidate = candidate.substr(slashPos + 1);
++                fullPath = FileUtils::getInstance()->fullPathForFilename(candidate);
++            }
++        }
++        if (!fullPath.empty())
++        {
++            Texture2D* texture = Director::getInstance()->getTextureCache()->addImage(fullPath);
++            if (texture)
++            {
++                Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
++                frame = SpriteFrame::createWithTexture(texture, bounds);
++                if (frame)
++                {
++                    addSpriteFrame(frame, name);
++                    return frame;
++                }
++            }
++        }
++    }
++    if (!frame)
++    {
++        // [haizei] 2.x 懒加载索引：被 removeUnusedSpriteFrames 自动清理的帧，
++        // 按来源 plist 重新加载后再查一次（老版 spriteFrameByName 同语义）。
++        std::string probe = name;
++        size_t slashPos = probe.find_last_of("/\\");
++        if (slashPos != std::string::npos)
++            probe = probe.substr(slashPos + 1);
++        auto lazyIt = _lazyFramePlists.find(probe);
++        if (lazyIt != _lazyFramePlists.end())
++        {
++            addSpriteFramesWithFile(lazyIt->second);
++            frame = _spriteFramesCache.at(probe);
++        }
++    }
+     if (!frame)
+     {
+         // try alias dictionary
+diff --git a/cocos/2d/CCSpriteFrameCache.h b/cocos/2d/CCSpriteFrameCache.h
+index 260ef95..6fcaec7 100644
+--- a/cocos/2d/CCSpriteFrameCache.h
++++ b/cocos/2d/CCSpriteFrameCache.h
+@@ -316,6 +316,11 @@ protected:
+ 
+     ValueMap _spriteFramesAliases;
+     PlistFramesCache _spriteFramesCache;
++    // [haizei] 2.x 兼容：帧名 -> 来源 plist 的持久索引。
++    // 老版 CCSpriteFrameCache 在 removeUnusedSpriteFrames 清帧后仍保留
++    // m_pSpriteFramesAndFileNames 索引，查询 miss 时自动重新加载图集；
++    // 3.x 没有该机制，被自动清理的帧之后永远查不到，这里补回。
++    std::unordered_map<std::string, std::string> _lazyFramePlists;
+ };
+ 
+ // end of _2d group
+diff --git a/cocos/editor-support/cocosbuilder/CCBAnimationManager.cpp b/cocos/editor-support/cocosbuilder/CCBAnimationManager.cpp
+index 2905d87..2cd31a0 100644
+--- a/cocos/editor-support/cocosbuilder/CCBAnimationManager.cpp
++++ b/cocos/editor-support/cocosbuilder/CCBAnimationManager.cpp
+@@ -75,10 +75,14 @@ CCBAnimationManager::~CCBAnimationManager()
+ //         Node *node = (Node*)pElement->getIntKey();
+ //         node->release();
+ //     }
+-    if (_rootNode)
+-    {
+-        _rootNode->stopAllActions();
+-    }
++    // [haizei] 2.x 的析构没有这一步（原 3.x 代码见下，被注释）。
++    // _rootNode 是裸指针，本工程的页面生命周期里（如 CCScrollView::setContainer
++    // 换容器）节点可能先于 manager 销毁，这里就成了悬空指针访问 → 崩溃。
++    // 节点自身析构时本来就会清掉挂在它身上的 action，不需要这里做。
++//     if (_rootNode)
++//     {
++//         _rootNode->stopAllActions();
++//     }
+     
+     setRootNode(nullptr);
+     setDelegate(nullptr);
+@@ -87,7 +91,8 @@ CCBAnimationManager::~CCBAnimationManager()
+     {
+         for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2)
+         {
+-            iter2->second->release();
++            if (iter2->second)  // [haizei] 允许存 nullptr（资源缺失），见 setObject
++                iter2->second->release();
+         }
+     }
+     
+@@ -260,11 +265,19 @@ const Value& CCBAnimationManager::getBaseValue(Node *pNode, const std::string& p
+     
+ void CCBAnimationManager::setObject(Ref* obj, Node *pNode, const std::string& propName)
+ {
++    // [haizei] 2.x 是 Objective-C：向 nil 发消息是 no-op，资源缺失时
++    // ccbReader 会把 nil 存进来。C++ 版对 nullptr 直接 retain/release 会崩
++    // （新号教学战 finalRound 的 ccbi 引用了缺失 spriteFrame → 闪退）。
++    if (obj == nullptr)
++    {
++        _objects[pNode][propName] = nullptr;
++        return;
++    }
+     auto& props = _objects[pNode];
+     auto iter = props.find(propName);
+-    if (iter != props.end())
++    if (iter != props.end() && iter->second)
+         iter->second->release();
+-        
++
+     props[propName] = obj;
+     obj->retain();
+ }
+@@ -826,6 +839,15 @@ void CCBAnimationManager::runAnimations(int nSeqId, float fTweenDuraiton)
+ 
+ void CCBAnimationManager::runAnimationsForSequenceIdTweenDuration(int nSeqId, float fTweenDuration)
+ {
++    // [haizei] 端口兼容：2.x 导出的 ccbi 在 3.x 解析时，部分时间线序列无法
++    // 被 CCBReader 识别（_sequences 为空或名称不匹配），getSequenceId 返回 -1。
++    // 原生的 CCASSERT 会直接 abort 拖垮整个进程。这里改为跳过该动画并告警，
++    // 让页面以“无动画”状态安全渲染，而不是崩溃。
++    if (nSeqId == -1)
++    {
++        CCLOGWARN("[CCBAnimationManager] sequence id -1 not found; skip animation (ccbi sequence missing/renamed).");
++        return;
++    }
+     CCASSERT(nSeqId != -1, "Sequence id couldn't be found");
+     
+     _rootNode->stopAllActions();
+@@ -911,6 +933,11 @@ void CCBAnimationManager::runAnimationsForSequenceIdTweenDuration(int nSeqId, fl
+ void CCBAnimationManager::runAnimationsForSequenceNamedTweenDuration(const char *pName, float fTweenDuration)
+ {
+     int seqId = getSequenceId(pName);
++    if (seqId == -1)
++    {
++        CCLOGWARN("[CCBAnimationManager] sequence '%s' not found; skip animation.", pName ? pName : "(null)");
++        return;
++    }
+     runAnimationsForSequenceIdTweenDuration(seqId, fTweenDuration);
+ }
+ 
+diff --git a/cocos/editor-support/cocosbuilder/CCBReader.cpp b/cocos/editor-support/cocosbuilder/CCBReader.cpp
+index 393a529..c3b8b3c 100644
+--- a/cocos/editor-support/cocosbuilder/CCBReader.cpp
++++ b/cocos/editor-support/cocosbuilder/CCBReader.cpp
+@@ -639,30 +639,35 @@ Node * CCBReader::readNodeGraph(Node * pParent)
+ 
+     if (memberVarAssignmentType != TargetType::NONE)
+     {
+-        if(!_jsControlled)
++        // [haizei] 3.x 原版在 jsControlled 的 ccbi 上走 else 分支（只记 outlet 列表，
++        // 不回调 assigner）。但本工程有相当数量的 ccbi（AdventureNavButton/framedButton/
++        // SkillBook/WorldBossPage/LevelUpReward* 等）头里带 jsControlled=1（美术用
++        // JS 工程导出），游戏本身是 C++ 的——2.x 私改版把 if(!jsControlled) 注释掉，
++        // 两种文件都回调 assigner，变量才能进容器的 map。3.x 恢复了这个分支导致
++        // 这些文件的 getVariable 全部 miss（弹模态框卡死/页面空白）。
++        // 这里对齐 2.x：赋值与 outlet 记录都无条件执行。
+         {
+             Ref*  target = nullptr;
+             if(memberVarAssignmentType == TargetType::DOCUMENT_ROOT)
+             {
+                 target = _animationManager->getRootNode();
+-            } 
++            }
+             else if(memberVarAssignmentType == TargetType::OWNER)
+             {
+                 target = this->_owner;
+             }
+-            
++
+             if(target != nullptr)
+             {
+                 CCBMemberVariableAssigner * targetAsCCBMemberVariableAssigner = dynamic_cast<CCBMemberVariableAssigner *>(target);
+-                
++
+                 bool assigned = false;
+-                if (memberVarAssignmentType != TargetType::NONE)
+                 {
+                     if(targetAsCCBMemberVariableAssigner != nullptr)
+                     {
+                         assigned = targetAsCCBMemberVariableAssigner->onAssignCCBMemberVariable(target, memberVarAssignmentName.c_str(), node);
+                     }
+-                    
++
+                     if(!assigned && this->_CCBMemberVariableAssigner != nullptr)
+                     {
+                         assigned = this->_CCBMemberVariableAssigner->onAssignCCBMemberVariable(target, memberVarAssignmentName.c_str(), node);
+@@ -670,7 +675,6 @@ Node * CCBReader::readNodeGraph(Node * pParent)
+                 }
+             }
+         }
+-        else
+         {
+             if(memberVarAssignmentType == TargetType::DOCUMENT_ROOT)
+             {
+@@ -813,12 +817,35 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
+ 
+         if (spriteSheet.empty())
+         {
+-            spriteFile = _CCBRootPath + spriteFile;
++            // [haizei] 与 NodeLoader::parsePropTypeSpriteFrame 一致：
++            // 2.x 先拿名字查图集（全名→去目录名），查不到才按散图文件加载。
++            // 原实现直接 addImage，找不到文件时 texture 为空指针 → 崩溃。
++            SpriteFrameCache* frameCache = SpriteFrameCache::getInstance();
++            spriteFrame = frameCache->getSpriteFrameByName(spriteFile);
++            if (spriteFrame == nullptr)
++            {
++                std::string baseName = spriteFile;
++                size_t slashPos = baseName.find_last_of("/\\");
++                if (slashPos != std::string::npos)
++                {
++                    spriteFrame = frameCache->getSpriteFrameByName(baseName.substr(slashPos + 1));
++                }
++            }
++            if (spriteFrame == nullptr)
++            {
++                spriteFile = _CCBRootPath + spriteFile;
+ 
+-            Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(spriteFile);
+-            Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
+-            
+-            spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
++                Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(spriteFile);
++                if (texture)
++                {
++                    Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
++                    spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
++                }
++                else
++                {
++                    CCLOG("[CCBReader] keyframe sprite frame not found: %s", spriteFile.c_str());
++                }
++            }
+         }
+         else
+         {
+@@ -833,6 +860,17 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
+             }
+             
+             spriteFrame = frameCache->getSpriteFrameByName(spriteFile);
++
++            // [haizei] 同 CCNodeLoader：2.x 会去掉目录前缀再查一次
++            if (spriteFrame == nullptr)
++            {
++                std::string baseName = spriteFile;
++                size_t slashPos = baseName.find_last_of("/\\");
++                if (slashPos != std::string::npos)
++                {
++                    spriteFrame = frameCache->getSpriteFrameByName(baseName.substr(slashPos + 1));
++                }
++            }
+         }
+         
+         keyframe->setObject(spriteFrame);
+diff --git a/cocos/editor-support/cocosbuilder/CCBSelectorResolver.h b/cocos/editor-support/cocosbuilder/CCBSelectorResolver.h
+index cf48bb2..6f4c8d3 100644
+--- a/cocos/editor-support/cocosbuilder/CCBSelectorResolver.h
++++ b/cocos/editor-support/cocosbuilder/CCBSelectorResolver.h
+@@ -50,6 +50,9 @@ class CC_DLL CCBSelectorResolver {
+      */
+     virtual ~CCBSelectorResolver() {};
+     virtual cocos2d::SEL_MenuHandler onResolveCCBCCMenuItemSelector(cocos2d::Ref * pTarget, const char* pSelectorName) = 0;
++    // [haizei] 老工程（2.x 私改版）在菜单回调解析失败时会带上触发节点再问一次，
++    // CCBContainer 用它把 ccbi 里的菜单统一路由到 onMenuItemAction。
++    virtual cocos2d::SEL_MenuHandler onResolveCCBCCMenuItemSelectorWithSender(cocos2d::Ref * pTarget, const char* pSelectorName, cocos2d::Node* pSender) { return NULL; }
+     virtual cocos2d::SEL_CallFuncN onResolveCCBCCCallFuncSelector(cocos2d::Ref * pTarget, const char* pSelectorName) { return NULL; };
+     virtual cocos2d::extension::Control::Handler onResolveCCBCCControlSelector(cocos2d::Ref * pTarget, const char* pSelectorName) = 0;
+ };
+diff --git a/cocos/editor-support/cocosbuilder/CCMenuItemLoader.cpp b/cocos/editor-support/cocosbuilder/CCMenuItemLoader.cpp
+index 3aee3c0..b8f36be 100644
+--- a/cocos/editor-support/cocosbuilder/CCMenuItemLoader.cpp
++++ b/cocos/editor-support/cocosbuilder/CCMenuItemLoader.cpp
+@@ -23,6 +23,7 @@
+  ****************************************************************************/
+ 
+ #include "editor-support/cocosbuilder/CCMenuItemLoader.h"
++#include <cstdlib>
+ 
+ using namespace cocos2d;
+ 
+@@ -33,9 +34,16 @@ namespace cocosbuilder {
+ 
+ void MenuItemLoader::onHandlePropTypeBlock(Node * pNode, Node * pParent, const char * pPropertyName, BlockData * pBlockData, CCBReader * ccbReader) {
+     if(strcmp(pPropertyName, PROPERTY_BLOCK) == 0) {
+-        if (nullptr != pBlockData) // Add this condition to allow MenuItemImage without target/selector predefined 
++        if (nullptr != pBlockData) // Add this condition to allow MenuItemImage without target/selector predefined
+         {
+             ((MenuItem *)pNode)->setCallback( std::bind( pBlockData->mSELMenuHandler, pBlockData->_target, std::placeholders::_1) );
++            // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++            static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++            if (sDiag)
++            {
++                CCLOG("[CCBDiag] MenuItem setCallback node=%p selectorTarget=%p",
++                      (void*)pNode, (void*)pBlockData->_target);
++            }
+ //            ((MenuItem *)pNode)->setTarget(pBlockData->_target, pBlockData->mSELMenuHandler);
+         }
+     } else {
+diff --git a/cocos/editor-support/cocosbuilder/CCNodeLoader.cpp b/cocos/editor-support/cocosbuilder/CCNodeLoader.cpp
+index 2dfce11..cd667a5 100644
+--- a/cocos/editor-support/cocosbuilder/CCNodeLoader.cpp
++++ b/cocos/editor-support/cocosbuilder/CCNodeLoader.cpp
+@@ -23,6 +23,8 @@
+  ****************************************************************************/
+ 
+ #include "editor-support/cocosbuilder/CCNodeLoader.h"
++#include <cstdlib>
++#include <typeinfo>
+ #include "editor-support/cocosbuilder/CCBSelectorResolver.h"
+ #include "editor-support/cocosbuilder/CCBMemberVariableAssigner.h"
+ #include "editor-support/cocosbuilder/CCBAnimationManager.h"
+@@ -80,6 +82,15 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
+         bool setProp = false;
+         
+         CCBReader::PlatformType platform = (CCBReader::PlatformType)ccbReader->readByte();
++        // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++        {
++            static const bool sDiagP = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++            if (sDiagP)
++            {
++                CCLOG("[CCBDiag] prop node=%s name='%s' type=%d platform=%d",
++                      typeid(*pNode).name(), propertyName.c_str(), (int)type, (int)platform);
++            }
++        }
+         if(platform == CCBReader::PlatformType::ALL)
+         {
+             setProp = true;
+@@ -366,6 +377,15 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
+             case CCBReader::PropertyType::BLOCK:
+             {
+                 BlockData * blockData = this->parsePropTypeBlock(pNode, pParent, ccbReader);
++                // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++                {
++                    static const bool sDiagB = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++                    if (sDiagB)
++                    {
++                        CCLOG("[CCBDiag] BLOCK apply node=%p setProp=%d blockData=%p loader=%s",
++                              (void*)pNode, (int)setProp, (void*)blockData, typeid(*this).name());
++                    }
++                }
+                 if(setProp) {
+                     this->onHandlePropTypeBlock(pNode, pParent, propertyName.c_str(), blockData, ccbReader);
+                 }
+@@ -608,11 +628,29 @@ SpriteFrame * NodeLoader::parsePropTypeSpriteFrame(Node * pNode, Node * /*pParen
+     {
+         if (spriteSheet.empty())
+         {
+-            spriteFile = ccbReader->getCCBRootPath() + spriteFile;
+-            Texture2D * texture = Director::getInstance()->getTextureCache()->addImage(spriteFile);
+-            if(texture != nullptr) {
+-                Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
+-                spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
++            // [haizei] 2.x 的行为：ccbi 里没记 spriteSheet 时，先拿这个名字去图集缓存里查
++            //（老工程的 ccbi 存的 key 形如 "mainScene/u_safe01.png"，图集里是 "u_safe01.png"），
++            // 查不到才当成独立图片文件去加载。3.x 直接按文件加载，导致大量图丢失。
++            SpriteFrameCache * frameCache = SpriteFrameCache::getInstance();
++            spriteFrame = frameCache->getSpriteFrameByName(spriteFile);
++            if (spriteFrame == nullptr)
++            {
++                std::string baseName = spriteFile;
++                size_t slashPos = baseName.find_last_of("/\\");
++                if (slashPos != std::string::npos)
++                {
++                    spriteFrame = frameCache->getSpriteFrameByName(baseName.substr(slashPos + 1));
++                }
++            }
++
++            if (spriteFrame == nullptr)
++            {
++                spriteFile = ccbReader->getCCBRootPath() + spriteFile;
++                Texture2D * texture = Director::getInstance()->getTextureCache()->addImage(spriteFile);
++                if(texture != nullptr) {
++                    Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
++                    spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
++                }
+             }
+         }
+         else 
+@@ -627,14 +665,32 @@ SpriteFrame * NodeLoader::parsePropTypeSpriteFrame(Node * pNode, Node * /*pParen
+             }
+             
+             spriteFrame = frameCache->getSpriteFrameByName(spriteFile);
++
++            // [haizei] 2.x 的 CCSpriteFrameCache::spriteFrameByName 会做
++            // “去掉目录前缀”的兼容查找，3.x 取消了。老 ccbi 里存的是
++            // "mainScene/xxx.png"，而图集里的 key 是 "xxx.png"，这里补回这个回退。
++            if (spriteFrame == nullptr)
++            {
++                std::string baseName = spriteFile;
++                size_t slashPos = baseName.find_last_of("/\\");
++                if (slashPos != std::string::npos)
++                {
++                    spriteFrame = frameCache->getSpriteFrameByName(baseName.substr(slashPos + 1));
++                }
++            }
+         }
+         
+         if (ccbReader->getAnimatedProperties()->find(pPropertyName) != ccbReader->getAnimatedProperties()->end())
+         {
+             ccbReader->getAnimationManager()->setObject(spriteFrame, pNode, pPropertyName);
+         }
++        // [haizei] 找不到帧时打出名字，方便对资源
++        if (spriteFrame == nullptr)
++        {
++            CCLOG("[CCB] sprite frame not found: '%s' (sheet:'%s' prop:%s)", spriteFile.c_str(), spriteSheet.c_str(), pPropertyName);
++        }
+     }
+-    
++
+     return spriteFrame;
+ }
+ 
+@@ -788,10 +844,24 @@ BlockData * NodeLoader::parsePropTypeBlock(Node * pNode, Node * /*pParent*/, CCB
+     std::string selectorName = ccbReader->readCachedString();
+     CCBReader::TargetType selectorTarget = static_cast<CCBReader::TargetType>(ccbReader->readInt(false));
+ 
++    // [diag] 仅当 HAIZEI_MENU_DIAG 环境变量存在时输出
++    static const bool sDiag = (std::getenv("HAIZEI_MENU_DIAG") != nullptr);
++    if (sDiag)
++    {
++        CCLOG("[CCBDiag] parsePropTypeBlock node=%s(%p) selector='%s' target=%d js=%d",
++              typeid(*pNode).name(), (void*)pNode, selectorName.c_str(), (int)selectorTarget,
++              (int)ccbReader->isJSControlled());
++    }
++
+     if(selectorTarget != CCBReader::TargetType::NONE)
+     {
+         Ref*  target = nullptr;
+-        if(!ccbReader->isJSControlled())
++        // [haizei] 老工程私改版：注释掉了 isJSControlled 判断（对比老版
++        // extensions/CCBReader/CCNodeLoader.cpp::parsePropTypeBlock），
++        // 无论 ccbi 的 jsControlled 标志是什么，都优先走 C++ selector 解析；
++        // 仅当解析失败（target 为空/名字为空/handler 未命中）才落回回调数组兜底。
++        // 3.x 上游的 if(!isJSControlled()) 会让 jsControlled=1 的 ccbi
++        // （framedButton.ccbi 等）静默丢失按钮回调 → 点击无响应。
+         {
+             if(selectorTarget == CCBReader::TargetType::DOCUMENT_ROOT)
+             {
+@@ -801,37 +871,46 @@ BlockData * NodeLoader::parsePropTypeBlock(Node * pNode, Node * /*pParent*/, CCB
+             {
+                 target = ccbReader->getOwner();
+             }
+-            
++
+             if(target != nullptr)
+             {
+                 if(!selectorName.empty())
+                 {
+                     SEL_MenuHandler selMenuHandler = 0;
+-                    
++
+                     CCBSelectorResolver * targetAsCCBSelectorResolver = dynamic_cast<CCBSelectorResolver *>(target);
+-                    
++
+                     if(targetAsCCBSelectorResolver != nullptr)
+                     {
+                         selMenuHandler = targetAsCCBSelectorResolver->onResolveCCBCCMenuItemSelector(target, selectorName.c_str());
++                        // [haizei] 老工程私改版：普通解析失败时带上触发节点再问一次
++                        if(!selMenuHandler)
++                        {
++                            selMenuHandler = targetAsCCBSelectorResolver->onResolveCCBCCMenuItemSelectorWithSender(target, selectorName.c_str(), pNode);
++                        }
+                     }
+-                    
++
+                     if(selMenuHandler == 0)
+                     {
+                         CCBSelectorResolver * ccbSelectorResolver = ccbReader->getCCBSelectorResolver();
+                         if(ccbSelectorResolver != nullptr)
+                         {
+                             selMenuHandler = ccbSelectorResolver->onResolveCCBCCMenuItemSelector(target, selectorName.c_str());
++                            if(!selMenuHandler)
++                            {
++                                selMenuHandler = ccbSelectorResolver->onResolveCCBCCMenuItemSelectorWithSender(target, selectorName.c_str(), pNode);
++                            }
+                         }
+                     }
+-                    
++
+                     if(selMenuHandler == 0) {
+                         CCLOG("Skipping selector '%s' since no CCBSelectorResolver is present.", selectorName.c_str());
+                     } else {
+                         BlockData * blockData = new (std::nothrow) BlockData();
+                         blockData->mSELMenuHandler = selMenuHandler;
+-                        
++
+                         blockData->_target = target;
+-                        
++
+                         return blockData;
+                     }
+                 } else {
+@@ -841,8 +920,9 @@ BlockData * NodeLoader::parsePropTypeBlock(Node * pNode, Node * /*pParent*/, CCB
+                 CCLOG("Unexpected nullptr target for selector.");
+             }
+         }
+-        else
+         {
++            // [haizei] 老版把 isJSControlled 的 else 分支保留为直落代码（解析失败时的兜底），
++            // 这里对齐：仅记录回调数组，不影响非 JS 运行时。
+             if (selectorTarget == CCBReader::TargetType::DOCUMENT_ROOT)
+             {
+                 ccbReader->addDocumentCallbackNode(pNode);
+diff --git a/cocos/network/CMakeLists.txt b/cocos/network/CMakeLists.txt
+index 96584bc..83e2e0e 100644
+--- a/cocos/network/CMakeLists.txt
++++ b/cocos/network/CMakeLists.txt
+@@ -25,12 +25,12 @@ elseif(APPLE)
+         network/Uri.cpp
+         )
+ else()
++    # [haizei] 本工程不使用 Downloader / AssetsManager，
++    # 而 CCDownloader-curl.cpp 会把 prebuilt libcurl.dll 拖进链接，
++    # 它又依赖 x86 版 libssl/libcrypto（本机没有）→ 这里直接不编译。
++    # [haizei] HttpClient.cpp 在 Windows 上也是走 libcurl，同上，先不编译
+     set(COCOS_NETWORK_SRC
+-        network/HttpClient.cpp
+-        network/SocketIO.cpp
+         network/WebSocket.cpp
+-        network/CCDownloader.cpp
+-        network/CCDownloader-curl.cpp
+         network/Uri.cpp
+         )
+ endif()
+diff --git a/cocos/platform/win32/CCCommon-win32.cpp b/cocos/platform/win32/CCCommon-win32.cpp
+index c3b97c1..67cac9c 100644
+--- a/cocos/platform/win32/CCCommon-win32.cpp
++++ b/cocos/platform/win32/CCCommon-win32.cpp
+@@ -37,9 +37,11 @@ NS_CC_BEGIN
+ 
+ void MessageBox(const char * pszMsg, const char * pszTitle)
+ {
+-    std::wstring wsMsg = cocos2d::StringUtf8ToWideChar(pszMsg);
+-    std::wstring wsTitle = cocos2d::StringUtf8ToWideChar(pszTitle);
+-    MessageBoxW(nullptr, wsMsg.c_str(), wsTitle.c_str(), MB_OK);
++    // [haizei] 原版是模态 MessageBoxW（阻塞主循环）。本工程把它降级为日志输出：
++    // 游戏代码大量用 CCMessageBox 报“变量缺失/资源缺失”这类非致命错误（2.x 私改版
++    // 同款逻辑），模态框会直接卡死游戏（自动化验证尤其致命）。与 2.x 不同的点在于
++    // 2.x 的数据/流程大多不会触发；移植初期先保证不卡死、错误可见，后续按日志逐个修。
++    CCLOG("[MessageBox] %s: %s", pszTitle ? pszTitle : "", pszMsg ? pszMsg : "");
+ }
+ 
+ void LuaLog(const char *pszMsg)
+diff --git a/cocos/renderer/CCRenderer.cpp b/cocos/renderer/CCRenderer.cpp
+index 8d7a231..d8e23ee 100644
+--- a/cocos/renderer/CCRenderer.cpp
++++ b/cocos/renderer/CCRenderer.cpp
+@@ -465,7 +465,9 @@ void Renderer::processRenderCommand(RenderCommand* command)
+     }
+     else
+     {
+-        CCLOGERROR("Unknown commands in renderQueue");
++        // [haizei][CrashHunt] 打印坏命令指针与类型值，配合 [SpriteFree] 日志定位已释放对象
++        CCLOGERROR("Unknown commands in renderQueue cmd=%p type=%d",
++                   (void*)command, (int)command->getType());
+     }
+ }
+ 
+diff --git a/cocos/ui/UIEditBox/UIEditBoxImpl-win32.cpp b/cocos/ui/UIEditBox/UIEditBoxImpl-win32.cpp
+index b873875..028c275 100644
+--- a/cocos/ui/UIEditBox/UIEditBoxImpl-win32.cpp
++++ b/cocos/ui/UIEditBox/UIEditBoxImpl-win32.cpp
+@@ -61,7 +61,7 @@ namespace ui {
+ 
+         s_hInstance = ::GetModuleHandleW(nullptr);
+ 
+-        s_prevCocosWndProc = (WNDPROC)SetWindowLongPtrW(s_hwndCocos, GWL_WNDPROC, (LONG_PTR)hookGLFWWindowProc);
++        s_prevCocosWndProc = (WNDPROC)SetWindowLongPtrW(s_hwndCocos, GWLP_WNDPROC, (LONG_PTR)hookGLFWWindowProc);
+     }
+ 
+     EditBoxImpl* __createSystemEditBox(EditBox* pEditBox)
+@@ -98,7 +98,7 @@ namespace ui {
+     {
+         if (_hwndEdit)
+         {
+-            SetWindowLongPtrW(_hwndEdit, GWL_WNDPROC, (LONG_PTR)_prevWndProc);
++            SetWindowLongPtrW(_hwndEdit, GWLP_WNDPROC, (LONG_PTR)_prevWndProc);
+             ::DestroyWindow(_hwndEdit);
+             _hasFocus = false;
+             _changedTextManually = false;
+@@ -125,8 +125,8 @@ namespace ui {
+                 s_hInstance,
+                 this);        // pointer not needed 
+ 
+-            SetWindowLongPtrW(_hwndEdit, GWL_USERDATA, (LONG_PTR)this);
+-            _prevWndProc = (WNDPROC)SetWindowLongPtrW(_hwndEdit, GWL_WNDPROC, (LONG_PTR)WindowProc);
++            SetWindowLongPtrW(_hwndEdit, GWLP_USERDATA, (LONG_PTR)this);
++            _prevWndProc = (WNDPROC)SetWindowLongPtrW(_hwndEdit, GWLP_WNDPROC, (LONG_PTR)WindowProc);
+ 
+             ::SendMessageW(_hwndEdit, EM_LIMITTEXT, this->_maxLength, 0);
+             s_previousFocusWnd = s_hwndCocos;
+diff --git a/extensions/CMakeLists.txt b/extensions/CMakeLists.txt
+index f50b92f..1102d3c 100644
+--- a/extensions/CMakeLists.txt
++++ b/extensions/CMakeLists.txt
+@@ -180,11 +180,8 @@ set(COCOS_EXTENSIONS_HEADER
+ 
+ set(COCOS_EXTENSIONS_SRC
+ 
+-    ../extensions/assets-manager/AssetsManager.cpp
+-    ../extensions/assets-manager/AssetsManagerEx.cpp
+-    ../extensions/assets-manager/CCEventAssetsManagerEx.cpp
+-    ../extensions/assets-manager/CCEventListenerAssetsManagerEx.cpp
+-    ../extensions/assets-manager/Manifest.cpp
++    # [haizei] assets-manager 依赖 Downloader/curl（prebuilt 的 libcurl.dll 需要 x86
++    # 版 libssl/libcrypto，本机没有）→ 先不编译，做热更时再接回来
+     ../extensions/GUI/CCControlExtension/CCControl.cpp
+     ../extensions/GUI/CCControlExtension/CCControlButton.cpp
+     ../extensions/GUI/CCControlExtension/CCControlColourPicker.cpp

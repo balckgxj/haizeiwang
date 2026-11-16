@@ -31,8 +31,18 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - name: Checkout
+      - name: Checkout (with cocos2d-x submodule)
         uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # engine/cocos2d-x 的 gitlink 指向官方 3.17.2 tag（1528ea0），
+      # 而本地对引擎有 16 处改动（见 patches/cocos2d-x-haizei.patch），CI 必须同样打上。
+      - name: Apply engine patches
+        run: |
+          test -f engine/cocos2d-x/cocos/CMakeLists.txt
+          git -C engine/cocos2d-x apply --whitespace=nowarn \
+            "$GITHUB_WORKSPACE/patches/cocos2d-x-haizei.patch"
 
       - name: Show Xcode version
         run: xcode-select -p && xcodebuild -version && cmake --version

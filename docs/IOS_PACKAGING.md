@@ -52,6 +52,12 @@ git push -u origin ios-build
   一次 20 分钟构建就扣掉约 200 分钟。额度耗尽后 job 也会一直排队不执行，到
   Settings → Billing & plans → Actions 查看用量，耗尽则等次月 1 号重置或绑定支付方式。
 - 已加 `concurrency`：同一分支重复触发会自动取消旧 run，避免多次点击造成队列堆积。
+- **引擎来源**：`engine/cocos2d-x` 是 gitlink（指向官方 3.17.2 tag），仓库根目录新增 `.gitmodules`
+  让 Actions 能拉取；本地对引擎的 16 处改动导出为 `patches/cocos2d-x-haizei.patch`，CI 在
+  Configure 前用 `git apply` 打上。以后本地再改引擎，记得重新导出补丁：
+  ```bash
+  git -C engine/cocos2d-x diff --binary > patches/cocos2d-x-haizei.patch
+  ```
 - 成功后在 run 详情页底部 **Artifacts** 下载 `Haizeiwang-ios-unsigned`（即 ipa）。
 - 失败时把 Actions 页面红色报错（或 build-log artifact）发给 AI 排查，改完重新推送即可，
   迭代很快。
