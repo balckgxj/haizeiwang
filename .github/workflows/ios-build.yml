@@ -25,9 +25,10 @@ jobs:
   build-ios:
     # macos-13 已于 2025-12-04 退役，macos-14 于 2026-11-02 退役。
     # 请求已退役的标签 → 没有 runner 会接单 → 一直排队直到被 GitHub 取消（"排队超时"）。
-    # macos-15 是 arm64 标准 runner，私有仓库可用免费分钟数，交叉编译 iOS arm64 原生更快。
-    # 早先 'macos-14-arm64-us-xl is not supported' 是 -xl 大 runner 要付费，与 arm64 本身无关。
-    runs-on: macos-15
+    # 曾用 macos-15（arm64），但该池资源紧张时长时间排队无 runner 接单；
+    # 改用 macos-15-intel（Intel 池更大更易接单）。交叉编译 iOS arm64 与编译主机架构无关，
+    # Xcode 仍生成 arm64 的 ipa，不影响产物。
+    runs-on: macos-15-intel
     timeout-minutes: 90
 
     steps:
