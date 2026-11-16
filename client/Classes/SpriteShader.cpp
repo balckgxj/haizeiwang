@@ -77,8 +77,10 @@ void SpriteShader::drawShader()
 	//
 	// Attributes
 	//
-#define kQuadSize sizeof(getQuad().bl)
-	long offset = (long)&getQuad();
+#define kQuadSize sizeof(_quad.bl)
+	// [haizei] cocos2d-x 3.x 的 getQuad() 返回值而非引用，&getQuad() 取的是临时对象地址；
+	// 直接用继承的 _quad 成员拿到真实 quad 内存地址。
+	long offset = (long)&_quad;
 
 	// vertex
 	int diff = offsetof( ccV3F_C4B_T2F, vertices);
