@@ -257,10 +257,18 @@ index c59d559..d959629 100644
              return child;
          }
 diff --git a/cocos/2d/CCMenu.h b/cocos/2d/CCMenu.h
-index d79ff0a..c75f1b1 100644
+index d79ff0a..3c752e7 100644
 --- a/cocos/2d/CCMenu.h
 +++ b/cocos/2d/CCMenu.h
-@@ -161,6 +161,17 @@ public:
+@@ -30,6 +30,7 @@ THE SOFTWARE.
+ #include "2d/CCMenuItem.h"
+ #include "2d/CCLayer.h"
+ #include "base/CCValue.h"
++#include "base/CCEventListenerTouch.h"  // [haizei] _menuTouchListener 需要完整类型定义（Xcode 16 严格编译）
+ 
+ NS_CC_BEGIN
+ class Touch;
+@@ -161,6 +162,17 @@ public:
      virtual void onTouchEnded(Touch* touch, Event* event) override;
      virtual void onTouchCancelled(Touch* touch, Event* event) override;
      virtual void onTouchMoved(Touch* touch, Event* event) override;
@@ -278,7 +286,7 @@ index d79ff0a..c75f1b1 100644
      
      // overrides
      virtual void removeChild(Node* child, bool cleanup) override;
-@@ -192,7 +203,12 @@ CC_CONSTRUCTOR_ACCESS:
+@@ -192,7 +204,12 @@ CC_CONSTRUCTOR_ACCESS:
  
  protected:
  
