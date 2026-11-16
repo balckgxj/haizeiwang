@@ -75,12 +75,17 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -DIOS=TRUE \
-            -DDEBUG_MODE=OFF
+            -DDEBUG_MODE=OFF \
+            -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations -Wno-shorten-64-to-32" \
+            -DCMAKE_C_FLAGS="-Wno-shorten-64-to-32"
 
+      # -jobs 2 而不是 4：4 路并行编译时 runner 两次都在编到 haizei_game 靶
+      # （TeamPage.cpp 附近）时无征兆死亡（日志截断、无任何编译错误），
+      # 判定为内存峰值/log 洪流导致 runner 被杀。降并行 + 屏蔽海量警告。
       - name: Build
         run: |
           cmake --build build-ios --config Release --target Haizeiwang -- \
-            -jobs 4 \
+            -jobs 2 \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
