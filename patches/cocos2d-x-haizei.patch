@@ -1,3 +1,18 @@
+diff --git a/cmake/Modules/CocosConfigDefine.cmake b/cmake/Modules/CocosConfigDefine.cmake
+index 4525083..e88772c 100644
+--- a/cmake/Modules/CocosConfigDefine.cmake
++++ b/cmake/Modules/CocosConfigDefine.cmake
+@@ -16,7 +16,9 @@
+          set(LINUX TRUE)
+          set(PLATFORM_FOLDER linux)
+      endif()
+- elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
++ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin|iOS")
++    # [haizei] CMake >=3.14 的 CMAKE_SYSTEM_NAME=iOS 原生 iOS 工具链，原来是 Darwin；
++    # 两种都接受，iOS 分支靠 -DIOS=TRUE 区分。
+      if(IOS)
+          set(APPLE TRUE)
+          set(PLATFORM_FOLDER ios)
 diff --git a/cocos/2d/CCMenu.cpp b/cocos/2d/CCMenu.cpp
 index c59d559..d959629 100644
 --- a/cocos/2d/CCMenu.cpp
