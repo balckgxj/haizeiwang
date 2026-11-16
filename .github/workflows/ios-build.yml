@@ -16,11 +16,18 @@ on:
       - 'docs/**'
       - '**.md'
 
+# 同一分支反复触发时取消旧的排队/运行中的 run，避免队列堆积看起来像"卡住"
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-ios:
-    # 免费私有仓库只能用 Intel 版 macos-13（macos-14/arm64 需付费或公开仓库）
-    # Intel 机器交叉编译 iOS arm64 没有问题
-    runs-on: macos-13
+    # macos-13 已于 2025-12-04 退役，macos-14 于 2026-11-02 退役。
+    # 请求已退役的标签 → 没有 runner 会接单 → 一直排队直到被 GitHub 取消（"排队超时"）。
+    # macos-15 是 arm64 标准 runner，私有仓库可用免费分钟数，交叉编译 iOS arm64 原生更快。
+    # 早先 'macos-14-arm64-us-xl is not supported' 是 -xl 大 runner 要付费，与 arm64 本身无关。
+    runs-on: macos-15
     timeout-minutes: 90
 
     steps:
