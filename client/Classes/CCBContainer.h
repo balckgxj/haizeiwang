@@ -40,7 +40,9 @@ public:
 
 	virtual std::string dumpInfo();
 
-	friend class cocos2d::extension::CCNodeLoader;
+	// [haizei] iOS 构建：compat 层把 CCNodeLoader typedef 为 cocosbuilder::NodeLoader，
+	// typedef 名不能用于 friend class 声明，改用真实类名。
+	friend class ::cocosbuilder::NodeLoader;
 	friend class cocos2d::extension::CCBAnimationManager;
 private:
 	//Do NOT use the fellow functions
