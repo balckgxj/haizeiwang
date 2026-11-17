@@ -5,6 +5,11 @@ set(BRIDGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../platform_bridge)
 file(GLOB GAME_CORE_SRC   ${GAME_DIR}/Classes/*.cpp)
 file(GLOB GAME_PB_SRC     ${GAME_DIR}/Protobuf/*.cc)
 file(GLOB GAME_COMPAT_SRC ${GAME_DIR}/compat/*.cpp ${GAME_DIR}/compat/revi/*.cpp)
+# curl 假桩（compat_curl_stub.cpp，所有请求一律失败）只给 WIN32 单机模式用；
+# iOS 必须真联网：服务器列表/热更/公告全走 HTTP，链接引擎自带 libcurl.a（见下方 IOS 分支）
+if(IOS)
+    list(REMOVE_ITEM GAME_COMPAT_SRC ${GAME_DIR}/compat/compat_curl_stub.cpp)
+endif()
 # Platform/GamePlatform.cpp 里有带解密的 getFileData（0xEF 0xFE + xor + zlib），
 # 少了它配置表全是乱码
 file(GLOB GAME_PLATFORM_SRC ${GAME_DIR}/Platform/*.cpp)
@@ -87,6 +92,9 @@ target_link_libraries(haizei_game PUBLIC cocos2d protobuf jsoncpp tinyxml)
 if(WIN32)
     target_link_libraries(haizei_game PUBLIC ws2_32 winmm)
 elseif(IOS)
+    # 真正的 libcurl（v3-deps-158 预编译，内含 OpenSSL/zlib 静态代码）
+    target_link_libraries(haizei_game PUBLIC
+        ${COCOS2DX_ROOT_PATH}/external/curl/prebuilt/ios/libcurl.a)
     # libOS.mm / MD5 / 平台桥接用到的系统框架（引擎已链 UIKit/OpenGLES 等基础框架）
     target_link_libraries(haizei_game PUBLIC
         "-framework Foundation"
