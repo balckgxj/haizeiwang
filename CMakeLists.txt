@@ -53,6 +53,11 @@ if(IOS)
     # 资源以 Xcode 资源组打进 .app 包
     cocos_mark_multi_resources(haizei_res RES_TO "Resources"
         FOLDERS ${CMAKE_CURRENT_SOURCE_DIR}/client/Resources)
+    # [haizei] App 桌面图标（乔巴头像，源自 loadingScene/u_ico.png，六个尺寸）：
+    # 以资源组打进 .app 根目录，配合 Info.plist 的 CFBundleIcons/CFBundleIconFiles 显示。
+    # 注意 Images.xcassets 在 CMake+Xcode 生成器下不会被 actool 编译，不能用图标集。
+    cocos_mark_multi_resources(haizei_ios_icons RES_TO "Resources"
+        FOLDERS ${CMAKE_CURRENT_SOURCE_DIR}/proj.ios/Icons)
     set(APP_UI_RES
         ${CMAKE_CURRENT_SOURCE_DIR}/proj.ios/Images.xcassets
         ${CMAKE_CURRENT_SOURCE_DIR}/proj.ios/LaunchScreen.storyboard
@@ -64,6 +69,7 @@ if(IOS)
         ${CMAKE_CURRENT_SOURCE_DIR}/proj.ios/RootViewController.mm
         ${APP_UI_RES}
         ${haizei_res}
+        ${haizei_ios_icons}
         )
     target_include_directories(Haizeiwang PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/client/Classes)
     target_link_libraries(Haizeiwang PRIVATE haizei_game cocos2d protobuf jsoncpp tinyxml)
