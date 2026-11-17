@@ -66,13 +66,18 @@ bool decBuffer(unsigned long inSize , unsigned char* inBuffer, unsigned long& ou
 
 unsigned char* getFileData( const char* pszFileName, const char* pszMode, unsigned long * pSize ,unsigned short* crc)
 {
-	unsigned char* buffer = cocos2d::CCFileUtils::sharedFileUtils()->getFileData(pszFileName,pszMode,pSize);
+	// 3.17.2 的 getFileData 用 ssize_t*（long*），2.x 是 unsigned long*，
+	// 用局部变量承接再回写到调用方的 pSize
+	ssize_t engineSize = 0;
+	unsigned char* buffer = cocos2d::CCFileUtils::sharedFileUtils()->getFileData(pszFileName,pszMode,&engineSize);
+	*pSize = (unsigned long)engineSize;
 	if(buffer && buffer[0]==0xef && buffer[1]==0xfe)
 	{
 		if(strcmp(pszMode,"rb")!=0 )
 		{
 			delete[] buffer;
-			buffer = cocos2d::CCFileUtils::sharedFileUtils()->getFileData(pszFileName,"rb",pSize);
+			buffer = cocos2d::CCFileUtils::sharedFileUtils()->getFileData(pszFileName,"rb",&engineSize);
+			*pSize = (unsigned long)engineSize;
 		}
 		{
 
