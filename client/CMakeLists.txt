@@ -60,11 +60,13 @@ target_include_directories(haizei_game PUBLIC
 )
 
 # 关键：强制包含兼容层，204 个源文件不用逐个加 include
+# 注意必须 PRIVATE：PUBLIC 会通过链接传播到 Haizeiwang app 目标，
+# 让 proj.ios/main.m（纯 ObjC）也被注入 C++ 头导致 'stack' file not found
 if(MSVC)
-    target_compile_options(haizei_game PUBLIC "/FI${GAME_DIR}/compat/haizei_compat.h")
+    target_compile_options(haizei_game PRIVATE "/FI${GAME_DIR}/compat/haizei_compat.h")
 else()
     # Clang（iOS）：-include<file> 连写形式，等价于 MSVC 的 /FI
-    target_compile_options(haizei_game PUBLIC "-include${GAME_DIR}/compat/haizei_compat.h")
+    target_compile_options(haizei_game PRIVATE "-include${GAME_DIR}/compat/haizei_compat.h")
 endif()
 
 # curl 按静态方式声明，这样 compat_curl_stub.cpp 里的桩才能顶上
