@@ -56,7 +56,7 @@ private:
 	unsigned int mTotalCount;
 	unsigned int mFinishedCount;
 
-	friend class cocos2d::CCScheduler;
+	friend class cocos2d::Scheduler;  // 3.17.2: CCScheduler 是 typedef，friend 必须用真实类名
 	void update(float dt);
 	void pushLoadingUnit();
 };
