@@ -6,6 +6,10 @@
 
 #ifdef _WINDOWS
 #include <direct.h>
+#else
+// POSIX 侧 mkdir(path, mode) / S_IRWXU 需要 <sys/stat.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #endif
 // 用引擎自带的 ZipUtils 做 inflate，避免直接依赖 external/zlib 的头文件
 // （那份 zconf.h 在 MSVC 下会去找 unistd.h）
