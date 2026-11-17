@@ -18,9 +18,17 @@ void SpriteShader::listenBackToForeground(CCObject *obj)
 	initProgram();
 }
 
+// [haizei] 二参版只是兼容旧签名，统一走三参版，保证任何加载路径都挂上自定义程序
 bool SpriteShader::initWithTexture(CCTexture2D* texture, const CCRect& rect)
 {
-	if( CCSprite::initWithTexture(texture, rect) ) 
+	return initWithTexture(texture, rect, false);
+}
+
+// [haizei] 三参版：Sprite::initWithSpriteFrame 内部就是调它（CCSprite.cpp:289），
+// 图集帧加载的角色立绘必须在这里挂自定义程序，否则 fightcard.sha 永远不生效
+bool SpriteShader::initWithTexture(CCTexture2D* texture, const cocos2d::Rect& rect, bool rotated)
+{
+	if( CCSprite::initWithTexture(texture, rect, rotated) ) 
 	{
 		cocos2d::__NotificationCenter::getInstance()->addObserver(this, callfuncO_selector(SpriteShader::listenBackToForeground), EVNET_COME_TO_FOREGROUND, nullptr);
 
@@ -62,41 +70,24 @@ void SpriteShader::initProgram()
 	CHECK_GL_ERROR_DEBUG();
 }
 
-void SpriteShader::drawShader()
+// [haizei] 3.x 渲染入口。旧 2.x 版本在 draw() 里手工设置顶点属性并 glDrawArrays；
+// 3.x 改为命令管线，不能直接发 GL 调用。做法：
+//   1) 确保节点程序是自定义着色器（Sprite::draw 的 TrianglesCommand 用
+//      getGLProgramState()，它包装的正是节点 GLProgram）；
+//   2) use() 后调用子类 setUniforms() 把 currentLife/displayLife/addColor/
+//      flashType 上传（GLProgramState 只管内建 uniform，不会覆盖自定义值）；
+//   3) 交给 Sprite::draw 走标准命令渲染。
+void SpriteShader::draw(cocos2d::Renderer* renderer, const cocos2d::Mat4& transform, uint32_t flags)
 {
-	ccGLEnableVertexAttribs(kCCVertexAttribFlag_PosColorTex );
-	ccGLBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	getShaderProgram()->use();
-	getShaderProgram()->setUniformsForBuiltins();
-	
-	setUniforms();
-	
-	ccGLBindTexture2D(  getTexture()->getName() );
-
-	//
-	// Attributes
-	//
-#define kQuadSize sizeof(_quad.bl)
-	// [haizei] cocos2d-x 3.x 的 getQuad() 返回值而非引用，&getQuad() 取的是临时对象地址；
-	// 直接用继承的 _quad 成员拿到真实 quad 内存地址。
-	long offset = (long)&_quad;
-
-	// vertex
-	int diff = offsetof( ccV3F_C4B_T2F, vertices);
-	glVertexAttribPointer(kCCVertexAttrib_Position, 3, GL_FLOAT, GL_FALSE, kQuadSize, (void*) (offset + diff));
-
-	// texCoods
-	diff = offsetof( ccV3F_C4B_T2F, texCoords);
-	glVertexAttribPointer(kCCVertexAttrib_TexCoords, 2, GL_FLOAT, GL_FALSE, kQuadSize, (void*)(offset + diff));
-
-	// color
-	diff = offsetof( ccV3F_C4B_T2F, colors);
-	glVertexAttribPointer(kCCVertexAttrib_Color, 4, GL_UNSIGNED_BYTE, GL_TRUE, kQuadSize, (void*)(offset + diff));
-
-
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	CC_INCREMENT_GL_DRAWS(1);
+	CCGLProgram* prog = getShaderProgram();
+	if (prog)
+	{
+		if (getGLProgram() != prog)
+		{
+			setGLProgram(prog);
+		}
+		prog->use();
+		setUniforms();
+	}
+	CCSprite::draw(renderer, transform, flags);
 }
-
