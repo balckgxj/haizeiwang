@@ -9,9 +9,11 @@ file(GLOB GAME_COMPAT_SRC ${GAME_DIR}/compat/*.cpp ${GAME_DIR}/compat/revi/*.cpp
 # 少了它配置表全是乱码
 file(GLOB GAME_PLATFORM_SRC ${GAME_DIR}/Platform/*.cpp)
 if(APPLE)
-    # iOS/Mac 版平台层（ObjC++）：带解密 getFileData 的苹果实现
+    # iOS/Mac 版平台层（ObjC++）：带解密 getFileData 的苹果实现。
+    # 与 GamePlatform.cpp 定义了同名 getFileData/saveFileInPath，二者只能编一个
     file(GLOB GAME_PLATFORM_MM_SRC ${GAME_DIR}/Platform/*.mm)
     list(APPEND GAME_PLATFORM_SRC ${GAME_PLATFORM_MM_SRC})
+    list(REMOVE_ITEM GAME_PLATFORM_SRC ${GAME_DIR}/Platform/GamePlatform.cpp)
 endif()
 
 # 平台层：Windows 用 win32 实现，iOS 用老手游原生的 libOS/iOS 实现
