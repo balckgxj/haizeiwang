@@ -32,6 +32,8 @@ elseif(IOS)
          ${BRIDGE_DIR}/libOS/iOS/*.m)
     set(BRIDGE_SRC
         ${BRIDGE_DIR}/libPlatform/include/libPlatform.cpp
+        # iOS 版 lib91 平台实现（PROJECT91 宏的注册目标，见 GamePrecedure.cpp）
+        ${BRIDGE_DIR}/libPlatform/ios/lib91_ios.cpp
         ${BRIDGE_IOS_SRC}
     )
 endif()
@@ -68,6 +70,13 @@ endif()
 # curl 按静态方式声明，这样 compat_curl_stub.cpp 里的桩才能顶上
 # （否则 curl.h 会把调用声明成 __declspec(dllimport)，仍然依赖 libcurl.dll）
 target_compile_definitions(haizei_game PUBLIC CURL_STATICLIB)
+
+# iOS 走原生的 91 平台分支：
+#   LoadingFrame.cpp  -> _platfrom = "version_ios_91.cfg"（否则 undeclared identifier）
+#   GamePrecedure.cpp -> 注册 lib91 平台（配合 libPlatform/ios/lib91_ios.cpp）
+if(IOS)
+    target_compile_definitions(haizei_game PUBLIC PROJECT91)
+endif()
 
 target_link_libraries(haizei_game PUBLIC cocos2d protobuf jsoncpp tinyxml)
 
