@@ -9,7 +9,11 @@
 #include "CCBManager.h"
 #include "CCBScriptContainer.h"
 #include "TimeCalculator.h"
+// desktop 版 GLViewImpl 需要 glfw3.h，仅桌面平台包含；
+// iOS/Mac 由 cocos2d.h 按平台自动引入对应 CCGLViewImpl-ios.h
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) || (CC_TARGET_PLATFORM == CC_PLATFORM_MAC) || (CC_TARGET_PLATFORM == CC_PLATFORM_LINUX)
 #include "platform/desktop/CCGLViewImpl-desktop.h"
+#endif
 #include <time.h>
 
 //
