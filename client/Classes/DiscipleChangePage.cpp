@@ -67,12 +67,26 @@ void DiscipleChangeContent::onMenuItemAction( const std::string& itemName, cocos
 {
 	if(itemName=="onSelected")
 	{
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		// [haizei] é€‰ä¸­è®°å½•åœ¨æ•°æ®å¯¹è±¡ä¸Šï¼›è§†å›¾å¤ç”¨åŽ this æŒ‡é’ˆå¯¹åº”çš„è¡Œä¼šå˜ï¼Œ
+		// ä¸èƒ½å†ä¼ è§†å›¾æŒ‡é’ˆï¼ˆç‚¹ç¡®è®¤ä¼šæ¢åˆ°éš”å£èˆ¹å‘˜çš„æ ¹å› ï¼‰
+		if(m_pItemData)
+		{
+			mOwnner->setSellectedContent(m_pItemData);
+			setSellect(m_pItemData->m_bSelected);
+		}
+#else
 		mOwnner->setSellectedContent(this);
+#endif
 	}
 }
 
 void DiscipleChangeContent::setSellect( bool sellect )
 {
+	if(!mSelect)
+	{
+		return;
+	}
 	if(sellect)
 	{
 		//mSelect->selected();
@@ -126,6 +140,9 @@ DiscipleChangePage::DiscipleChangePage(void)
 	members = NULL;
 	mContentList.clear();
 	mCurSellectedContent = NULL;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	m_curSelectedItemData = NULL;
+#endif
 	isDesOrder=true;
 }
 
@@ -139,6 +156,9 @@ void DiscipleChangePage::Enter( MainFrame* frame)
 	isDesOrder=true;
 	rebuildAllItem();
 	mCurSellectedContent = NULL;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	m_curSelectedItemData = NULL;
+#endif
 	refreshPage();
 }
 
@@ -173,14 +193,14 @@ void DiscipleChangePage::load( void )
 
 bool DiscipleFilter_Change(unsigned int id)
 {
-	//µ±Ç°µÜ×Ó
+	//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½
 	if(id == BlackBoard::Get()->CurChangeDiscipleID)
 	{
 		return false;
 	}
 	if(id != 0)
 	{
-		//ÒÑÉÏÕó
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		Disciple disciple(id);
 		if(disciple.isInBattle())
 			return false;
@@ -217,7 +237,7 @@ void DiscipleChangePage::buildItem( void )
 	{
 		const int iMaxNode = (int)m_pScrollViewFacade->getMaxDynamicControledItemViewsNum();
 		int iCount = 0;
-		float fOneItemHeight = 0.f;//µÈ¸ß
+		float fOneItemHeight = 0.f;//ï¿½È¸ï¿½
 		float fOneItemWidth = 0.f;
 		
 		if (isDesOrder)
@@ -260,7 +280,7 @@ void DiscipleChangePage::buildItem( void )
 					pItem = new DiscipleChangeContent(*itr, this);
 					pItem->initItemView();
 
-					//pItem->refreshItemView(pItemData);//³õÊ¼ÔÚm_pScrollViewFacade->setDynamicItemsStartPositionÉèÖÃ
+					//pItem->refreshItemView(pItemData);//ï¿½ï¿½Ê¼ï¿½ï¿½m_pScrollViewFacade->setDynamicItemsStartPositionï¿½ï¿½ï¿½ï¿½
 					//
 					if (fOneItemHeight < pItem->getContainerNode()->getContentSize().height)
 						fOneItemHeight = pItem->getContainerNode()->getContentSize().height;
@@ -293,7 +313,7 @@ void DiscipleChangePage::buildItem( void )
 					pItem = new DiscipleChangeContent(*itr, this);
 					pItem->initItemView();
 
-					//pItem->refreshItemView(pItemData);//³õÊ¼ÔÚm_pScrollViewFacade->setDynamicItemsStartPositionÉèÖÃ
+					//pItem->refreshItemView(pItemData);//ï¿½ï¿½Ê¼ï¿½ï¿½m_pScrollViewFacade->setDynamicItemsStartPositionï¿½ï¿½ï¿½ï¿½
 					//
 					if (fOneItemHeight < pItem->getContainerNode()->getContentSize().height)
 						fOneItemHeight = pItem->getContainerNode()->getContentSize().height;
@@ -310,11 +330,11 @@ void DiscipleChangePage::buildItem( void )
 		CCSize size = CCSize(fOneItemWidth, fOneItemHeight*iCount);
 		members->setContentSize(size);
 		/*
-			×¢ÒâScrollViewÀï³ýÁËÊÜ¿ØµÄDynamicItems£¬»¹ÓÐÆäËûItems
-			ScrollViewÃªµã(0.f,0.f)Î»ÓÚ×óÏÂ½Ç
-			heightÓÉÏÂÏòÉÏÔö³¤
-			widthÓÉ×óÏòÓÒÔö³¤
-			ÏÂÃæÁ½¾äË³Ðò²»ÄÜµßµ¹£¬ÒâË¼ÊÇ£º×îºóÌí¼ÓµÄÏÔÊ¾µ½¿ÉÊÓÇøÓò×óÉÏ½Ç
+			×¢ï¿½ï¿½ScrollViewï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿Øµï¿½DynamicItemsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Items
+			ScrollViewÃªï¿½ï¿½(0.f,0.f)Î»ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½
+			heightï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			widthï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½Üµßµï¿½ï¿½ï¿½ï¿½ï¿½Ë¼ï¿½Ç£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï½ï¿½
 		*/
 		members->setContentOffset(ccp(0, members->getViewSize().height - members->getContentSize().height*members->getScaleY()));
 		m_pScrollViewFacade->setDynamicItemsStartPosition(iCount-1);
@@ -376,7 +396,7 @@ void DiscipleChangePage::buildItem( void )
 
 void DiscipleChangePage::rebuildAllItem( void )
 {
-	mCurSellectedContent = NULL;//rebuild Õâ¸ö²»ÄÜ±£Áô£¬Ò²²»¸ø»Ö¸´
+	mCurSellectedContent = NULL;//rebuild ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü±ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½
 	clearAllItem();
 	buildItem();
 }
@@ -385,6 +405,7 @@ void DiscipleChangePage::clearAllItem( void )
 {
 #ifdef Macro_TestUseCCReViScrollViewFacade
 	m_pScrollViewFacade->clearAllItems();
+	m_curSelectedItemData = NULL;
 #endif
 	ContentList::iterator itr = mContentList.begin();
 	while(itr != mContentList.end())
@@ -463,7 +484,11 @@ void DiscipleChangePage::onMenuItemAction( const std::string& itemName, cocos2d:
 {
 	if(itemName=="onConfirm")
 	{
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		if(m_curSelectedItemData == NULL)
+#else
 		if(mCurSellectedContent == NULL)
+#endif
 		{
 			MsgMainFrameChangePage msg;
 			msg.pageName = "TeamPage";
@@ -474,8 +499,13 @@ void DiscipleChangePage::onMenuItemAction( const std::string& itemName, cocos2d:
 			if(confirmFlag)
 			{
 				bool isNeedConfirm=false;
-				
-				Disciple disciple(mCurSellectedContent->getContentID());
+				unsigned int selectedDiscipleID = 0;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+				selectedDiscipleID = m_curSelectedItemData->m_iDiscipleID;
+#else
+				selectedDiscipleID = mCurSellectedContent->getContentID();
+#endif
+				Disciple disciple(selectedDiscipleID);
 				Skill defaultSkill(disciple.skill1());
 				const UserBattleInfo* battleInfo=ServerDateManager::Get()->getUserBattleInfo(BlackBoard::Get()->CurBattlePosition);
 				if(battleInfo->skill1!=0)
@@ -499,18 +529,18 @@ void DiscipleChangePage::onMenuItemAction( const std::string& itemName, cocos2d:
 					std::string key="changeDiscipleConfirmKey";
 					if(HAS_V(key))
 					{
-						SET_V(key,mCurSellectedContent->getContentID());
+						SET_V(key,selectedDiscipleID);
 					}
 					else
 					{
-						ADD_V(key,mCurSellectedContent->getContentID());
+						ADD_V(key,selectedDiscipleID);
 					}
 					POP_BOX(ChangeDiscipleConfirm);
 				}
 				else
 				{
 					OPChangeDisciple changeDisciple;
-					changeDisciple.set_discipleid( mCurSellectedContent->getContentID() );
+					changeDisciple.set_discipleid( selectedDiscipleID );
 					changeDisciple.set_position( BlackBoard::Get()->CurBattlePosition );
 					PacketManager::Get()->sendPakcet(OPCODE_CHANGE_DISCIPLE_C,&changeDisciple);
 					confirmFlag = false;
@@ -583,6 +613,31 @@ void DiscipleChangePage::setSellectedContent( DiscipleChangeContent* member )
 		mCurSellectedContent = NULL;
 	}
 }
+
+#ifdef Macro_TestUseCCReViScrollViewFacade
+// [haizei] facade ç‰ˆï¼šé€‰ä¸­è½åœ¨æ•°æ®å¯¹è±¡ä¸Šï¼Œè§†å›¾å¤ç”¨/æ»šåŠ¨åŽä»ç„¶æ­£ç¡®
+void DiscipleChangePage::setSellectedContent( DiscipleChangeContentItemData* member )
+{
+	if (m_curSelectedItemData)
+	{
+		m_curSelectedItemData->m_bSelected = false;
+		//ä¹‹å‰é€‰ä¸­çš„è¡Œå¦‚æžœè¿˜åœ¨æŸä¸ªå¤ç”¨è§†å›¾ä¸Šï¼ŒæŠŠé«˜äº®æ’¤æŽ‰
+		DiscipleChangeContent* pItemView = (DiscipleChangeContent*)m_pScrollViewFacade->findItemNodeByItemData(m_curSelectedItemData);
+		if (pItemView)
+			pItemView->setSellect(false);
+	}
+
+	if(m_curSelectedItemData != member)
+	{
+		m_curSelectedItemData = member;
+		member->m_bSelected = true;
+	}
+	else
+	{
+		m_curSelectedItemData = NULL;
+	}
+}
+#endif
 
 void DiscipleChangePage::refreshPage( void )
 {

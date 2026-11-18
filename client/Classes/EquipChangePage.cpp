@@ -16,9 +16,12 @@ USING_NS_CC;
 void EquipChangeContent::refreshContent( void )
 {
 	mSelect = dynamic_cast<CCMenuItemImage* >(mContentContainer->getVariable("mSelected"));
-//	mSelect->unselected();
-	mSelect->setNormalImage(::getContentUnselectedSpirte("Normal"));
-	mSelect->setSelectedImage(::getContentUnselectedSpirte("Normal"));
+	if(mSelect)
+	{
+		//mSelect->unselected();
+		mSelect->setNormalImage(::getContentUnselectedSpirte("Normal"));
+		mSelect->setSelectedImage(::getContentUnselectedSpirte("Normal"));
+	}
 	Equip equip(mID);
 
 	CCSprite* prop=dynamic_cast<CCSprite* >(mContentContainer->getVariable("mEquipPic"));
@@ -106,12 +109,15 @@ void EquipChangeContent::onMenuItemAction( const std::string& itemName, cocos2d:
 	if(itemName=="onSelected")
 	{
 #ifdef Macro_TestUseCCReViScrollViewFacade
-		mOwnner->setSellectedContent(m_pItemData);
-		setSellect(m_pItemData->m_bSelected);
+		if(m_pItemData)
+		{
+			mOwnner->setSellectedContent(m_pItemData);
+			setSellect(m_pItemData->m_bSelected);
+		}
 #else
 		mOwnner->setSellectedContent(this);
 #endif
-		if(carriedByDiscipleName!="" && mSelect->isSelected())
+		if(mSelect && carriedByDiscipleName!="" && mSelect->isSelected())
 		{
 			char buff[128];
 			std::string s= Language::Get()->getString("@AlreadyUsedBy");
@@ -123,6 +129,10 @@ void EquipChangeContent::onMenuItemAction( const std::string& itemName, cocos2d:
 
 void EquipChangeContent::setSellect( bool sellect )
 {
+	if(!mSelect)
+	{
+		return;
+	}
 	if(sellect)
 	{
 		//mSelect->selected();
@@ -218,13 +228,13 @@ bool EquipFilter_Change(unsigned int id)
 {
 	Equip equip(id);
 
-	//ºÍµ±Ç°¸ü»»×°±¸ÀàÐÍ²»Í¬
+	//ï¿½Íµï¿½Ç°ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½Í²ï¿½Í¬
 	if(BlackBoard::Get()->CurChangeEquipType != equip.type())
 	{
 		return false;
 	}
 
-	//µ±Ç°×°±¸
+	//ï¿½ï¿½Ç°×°ï¿½ï¿½
 	if(equip.id() == BlackBoard::Get()->CurChangeEquipID)
 	{
 		return false;
@@ -239,7 +249,7 @@ void EquipChangePage::buildItem( void )
 	{
 		const int iMaxNode = (int)m_pScrollViewFacade->getMaxDynamicControledItemViewsNum();
 		int iCount = 0;
-		float fOneItemHeight = 0.f;//µÈ¸ß
+		float fOneItemHeight = 0.f;//ï¿½È¸ï¿½
 		float fOneItemWidth = 0.f;
 		EquipDateCollect::EquipIDCollect collect = EquipDateCollect::Get()->getEquipCollection(EquipFilter_Change);
 		if(collect.rbegin() == collect.rend()){
@@ -285,7 +295,7 @@ void EquipChangePage::buildItem( void )
 					pItem = new EquipChangeContent(*itr, this);
 					pItem->initItemView();
 
-					//pItem->refreshItemView(pItemData);//³õÊ¼ÔÚm_pScrollViewFacade->setDynamicItemsStartPositionÉèÖÃ
+					//pItem->refreshItemView(pItemData);//ï¿½ï¿½Ê¼ï¿½ï¿½m_pScrollViewFacade->setDynamicItemsStartPositionï¿½ï¿½ï¿½ï¿½
 					//
 					if (fOneItemHeight < pItem->getContainerNode()->getContentSize().height)
 						fOneItemHeight = pItem->getContainerNode()->getContentSize().height;
@@ -318,7 +328,7 @@ void EquipChangePage::buildItem( void )
 					pItem = new EquipChangeContent(*itr, this);
 					pItem->initItemView();
 
-					//pItem->refreshItemView(pItemData);//³õÊ¼ÔÚm_pScrollViewFacade->setDynamicItemsStartPositionÉèÖÃ
+					//pItem->refreshItemView(pItemData);//ï¿½ï¿½Ê¼ï¿½ï¿½m_pScrollViewFacade->setDynamicItemsStartPositionï¿½ï¿½ï¿½ï¿½
 					//
 					if (fOneItemHeight < pItem->getContainerNode()->getContentSize().height)
 						fOneItemHeight = pItem->getContainerNode()->getContentSize().height;
@@ -335,11 +345,11 @@ void EquipChangePage::buildItem( void )
 		CCSize size = CCSize(fOneItemWidth, fOneItemHeight*iCount);
 		members->setContentSize(size);
 		/*
-			×¢ÒâScrollViewÀï³ýÁËÊÜ¿ØµÄDynamicItems£¬»¹ÓÐÆäËûItems
-			ScrollViewÃªµã(0.f,0.f)Î»ÓÚ×óÏÂ½Ç
-			heightÓÉÏÂÏòÉÏÔö³¤
-			widthÓÉ×óÏòÓÒÔö³¤
-			ÏÂÃæÁ½¾äË³Ðò²»ÄÜµßµ¹£¬ÒâË¼ÊÇ£º×îºóÌí¼ÓµÄÏÔÊ¾µ½¿ÉÊÓÇøÓò×óÉÏ½Ç
+			×¢ï¿½ï¿½ScrollViewï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿Øµï¿½DynamicItemsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Items
+			ScrollViewÃªï¿½ï¿½(0.f,0.f)Î»ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½
+			heightï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			widthï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½Üµßµï¿½ï¿½ï¿½ï¿½ï¿½Ë¼ï¿½Ç£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï½ï¿½
 		*/
 		members->setContentOffset(ccp(0, members->getViewSize().height - members->getContentSize().height*members->getScaleY()));
 		m_pScrollViewFacade->setDynamicItemsStartPosition(iCount-1);
@@ -576,7 +586,7 @@ void EquipChangePage::setSellectedContent( EquipChangeContentItemData* member )
 	if (m_curSelectedItemData)
 	{
 		m_curSelectedItemData->m_bSelected = false;
-		//ÒòÎªÊÇµ¥Ñ¡£¬ËùÒÔÑ¡ÖÐÁíÒ»¸öÊ±ÐèÒª°ÑÖ®Ç°Ñ¡µÄ·Åµô
+		//ï¿½ï¿½Îªï¿½Çµï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ê±ï¿½ï¿½Òªï¿½ï¿½Ö®Ç°Ñ¡ï¿½Ä·Åµï¿½
 		EquipChangeContent* pItemView = (EquipChangeContent*)m_pScrollViewFacade->findItemNodeByItemData(m_curSelectedItemData);
 		if (pItemView)
 			pItemView->setSellect(false);

@@ -102,8 +102,17 @@ void SkillChangeContent::onMenuItemAction( const std::string& itemName, cocos2d:
 {
 	if(itemName=="onSelected")
 	{
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		// [haizei] 选中记录在数据对象上；视图复用后 this 对应的行会变
+		if(m_pItemData)
+		{
+			mOwnner->setSellectedContent(m_pItemData);
+			setSellect(m_pItemData->m_bSelected);
+		}
+#else
 		mOwnner->setSellectedContent(this);
-		if(carriedByDiscipleName!="" && mSelect->isSelected())
+#endif
+		if(mSelect && carriedByDiscipleName!="" && mSelect->isSelected())
 		{
 			char buff[128];
 			std::string s= Language::Get()->getString("@AlreadyUsedBy");
@@ -115,6 +124,10 @@ void SkillChangeContent::onMenuItemAction( const std::string& itemName, cocos2d:
 
 void SkillChangeContent::setSellect( bool sellect )
 {
+	if(!mSelect)
+	{
+		return;
+	}
 	if(sellect)
 	{
 		//mSelect->selected();
@@ -162,6 +175,9 @@ SkillChangePage::SkillChangePage(void)
 	members = NULL;
 	mContentList.clear();
 	mCurSellectedContent = NULL;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	m_curSelectedItemData = NULL;
+#endif
 	isDesOrder=true;
 }
 
@@ -177,6 +193,9 @@ void SkillChangePage::Enter( MainFrame* frame)
 	isDesOrder=true;
 	rebuildAllItem();
 	mCurSellectedContent = NULL;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	m_curSelectedItemData = NULL;
+#endif
 	refreshPage();
 }
 
@@ -419,6 +438,7 @@ void SkillChangePage::clearAllItem( void )
 {
 #ifdef Macro_TestUseCCReViScrollViewFacade
 	m_pScrollViewFacade->clearAllItems();
+	m_curSelectedItemData = NULL;
 #endif
 	ContentList::iterator itr = mContentList.begin();
 	while(itr != mContentList.end())
@@ -499,7 +519,11 @@ void SkillChangePage::onMenuItemAction( const std::string& itemName, cocos2d::CC
 {
 	if(itemName=="onConfirm")
 	{
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		if(m_curSelectedItemData == NULL)
+#else
 		if(mCurSellectedContent == NULL)
+#endif
 		{
 			MsgMainFrameChangePage msg;
 			msg.pageName = "TeamPage";
@@ -508,7 +532,11 @@ void SkillChangePage::onMenuItemAction( const std::string& itemName, cocos2d::CC
 		else
 		{
 			OPChangeSkill changeSkill;
+#ifdef Macro_TestUseCCReViScrollViewFacade
+			changeSkill.set_newskillid( m_curSelectedItemData->m_iSkillID );
+#else
 			changeSkill.set_newskillid( mCurSellectedContent->getContentID() );
+#endif
 			changeSkill.set_battleposition(BlackBoard::Get()->CurBattlePosition);
 			changeSkill.set_skillposition( BlackBoard::Get()->CurChangeSkillPosition );
 			PacketManager::Get()->sendPakcet(OPCODE_CHANGE_SKILL_C,&changeSkill);
@@ -553,3 +581,27 @@ void SkillChangePage::setSellectedContent( SkillChangeContent* member )
 		mCurSellectedContent = NULL;
 	}
 }
+
+#ifdef Macro_TestUseCCReViScrollViewFacade
+// [haizei] facade 版：选中落在数据对象上，视图复用/滚动后仍然正确
+void SkillChangePage::setSellectedContent( SkillChangeContentItemData* member )
+{
+	if (m_curSelectedItemData)
+	{
+		m_curSelectedItemData->m_bSelected = false;
+		SkillChangeContent* pItemView = (SkillChangeContent*)m_pScrollViewFacade->findItemNodeByItemData(m_curSelectedItemData);
+		if (pItemView)
+			pItemView->setSellect(false);
+	}
+
+	if(m_curSelectedItemData != member)
+	{
+		m_curSelectedItemData = member;
+		member->m_bSelected = true;
+	}
+	else
+	{
+		m_curSelectedItemData = NULL;
+	}
+}
+#endif

@@ -37,6 +37,21 @@ $BS_HOST       = '127.0.0.1';     // DZM 游戏服务端
 $BS_PORT       = 25524;
 $PAGE_SIZE     = 20;
 
+// ====== 访问安全：GM 面板只允许本机与家里局域网访问 ======
+// Tailscale(100.x) 与公网来源一律拒绝 —— 朋友只能玩游戏，碰不到 GM
+$_gm_client_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+$_gm_p = explode('.', $_gm_client_ip);
+$_gm_allow = false;
+if ($_gm_client_ip === '127.0.0.1' || $_gm_client_ip === '::1') {
+    $_gm_allow = true;
+} elseif (count($_gm_p) >= 2 && $_gm_p[0] === '192' && $_gm_p[1] === '168') {
+    $_gm_allow = true;   // 家里局域网
+}
+if (!$_gm_allow) {
+    http_response_code(403);
+    die('Forbidden');
+}
+
 header('Content-Type: text/html; charset=utf-8');
 error_reporting(E_ERROR | E_PARSE);
 

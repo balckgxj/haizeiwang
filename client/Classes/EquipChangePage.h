@@ -38,6 +38,10 @@ public:
 		: ContentBase(id)
 		, mOwnner(ownner)
 		,carriedByDiscipleName("")
+		,mSelect(NULL)
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		,m_pItemData(NULL)
+#endif
 	{};
 	virtual ~EquipChangeContent(){};
 

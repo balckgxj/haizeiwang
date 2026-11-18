@@ -38,6 +38,10 @@ public:
 	DiscipleChangeContent(unsigned int id, DiscipleChangePage* ownner)
 		: ContentBase(id)
 		, mOwnner(ownner)
+		, mSelect(NULL)
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		, m_pItemData(NULL)
+#endif
 	{};
 	virtual ~DiscipleChangeContent();
 
@@ -111,6 +115,10 @@ public:
 
 	void setSellectedContent(DiscipleChangeContent* member);
 
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	void setSellectedContent(DiscipleChangeContentItemData* member);
+#endif
+
 private:
 
 	typedef std::vector<ContentBase * > ContentList;
@@ -129,6 +137,9 @@ private:
 
 #ifdef Macro_TestUseCCReViScrollViewFacade
 	cocos2d::extension::CCReViScrollViewFacade* m_pScrollViewFacade;
+	// [haizei] 选中必须落在数据对象上：facade 视图会滚动复用，
+	// 视图对象指针在滚动后对应的行会变（点确认换到隔壁船员的根因）
+	DiscipleChangeContentItemData* m_curSelectedItemData;
 #endif
 
 };

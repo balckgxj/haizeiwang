@@ -38,6 +38,10 @@ public:
 	SkillChangeContent(unsigned int id, SkillChangePage* ownner)
 		: ContentBase(id)
 		, mOwnner(ownner)
+		, mSelect(NULL)
+#ifdef Macro_TestUseCCReViScrollViewFacade
+		, m_pItemData(NULL)
+#endif
 	{};
 	virtual ~SkillChangeContent(){};
 
@@ -111,6 +115,10 @@ public:
 
 	void setSellectedContent(SkillChangeContent* member);
 
+#ifdef Macro_TestUseCCReViScrollViewFacade
+	void setSellectedContent(SkillChangeContentItemData* member);
+#endif
+
 private:
 
 	typedef std::vector<ContentBase * > ContentList;
@@ -127,6 +135,8 @@ private:
 
 #ifdef Macro_TestUseCCReViScrollViewFacade
 	cocos2d::extension::CCReViScrollViewFacade* m_pScrollViewFacade;
+	// [haizei] 选中落在数据对象上（视图复用后指针会对应到别的行）
+	SkillChangeContentItemData* m_curSelectedItemData;
 #endif
 
 };

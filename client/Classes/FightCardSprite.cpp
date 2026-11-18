@@ -7,6 +7,13 @@
 FightCardSprite::FightCardSprite(void)
 	:currentLifeValue(1.0f),displayLifeValue(1.0f),flashTypeValue(0)
 {
+	// [haizei] 血量动画成员此前未初始化：构造后 tick() 里
+	// lifeChangeTime<lifeChangeFullTime 是垃圾比较，displayLifeValue 会被
+	// 随机改写并上传 displayLife uniform，导致战斗人物灰度/色块异常。
+	lifeChangeTime = 0;
+	lifeChangeFullTime = 0;
+	lifeChangeRate = 0;
+
 	addColorValue.a = addColorValue.r = addColorValue.g = addColorValue.b =0.f;
 
 	addColorStart = addColorValue;

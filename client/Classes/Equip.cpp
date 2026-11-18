@@ -133,8 +133,11 @@ unsigned int Equip::itemID()
 
 const std::string& Equip::name()
 {
+	// [haizei] 返回 const 引用时不能用临时对象 ""，引用会立即悬空，
+	// 调用方使用该引用属于未定义行为（装备表缺失时偶发崩溃）
+	static const std::string sEmptyName;
 	if(!mEquipItem)
-		return "";
+		return sEmptyName;
 	return mEquipItem->name;
 }
 
