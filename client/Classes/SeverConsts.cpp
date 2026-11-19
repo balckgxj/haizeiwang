@@ -151,6 +151,29 @@ void SeverConsts::start()
 }
 
 // ---------------------------------------------------------------------------
+// [haizei] iOS 版通过 Tailscale 连本机服务
+//
+// iOS bundle 里带了 haizei_local_mode.flag，会走本地模式读 localSevers.json。
+// 本地服表里的 127.0.0.1 会让手机去连它自己，永远连不到电脑上的游戏服。
+// 因此 iOS 平台把回环地址替换成电脑的 Tailscale IP（100.65.143.49），
+// 游戏服 DZM 绑定 0.0.0.0:25524，Tailscale 内网可直连。
+// PC(Win32) 端保持原样，仍连本机 127.0.0.1。
+//
+// 注意：这是硬编码的 Tailscale IP，若电脑的 Tailscale 地址变了需同步修改此处。
+// ---------------------------------------------------------------------------
+static std::string haizeiSeverAddressForPlatform(const std::string& addr)
+{
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
+    if (addr.empty() || addr == "127.0.0.1" || addr == "localhost" || addr == "::1")
+        return "100.65.143.49";
+    return addr;
+#else
+    (void)addr;
+    return addr;
+#endif
+}
+
+// ---------------------------------------------------------------------------
 // [haizei] 读取本地区服表
 //
 // 优先读 Resources/localSevers.json（格式与原区服表一致）：
@@ -185,7 +208,8 @@ void SeverConsts::_loadLocalSevers()
 		{
 			SEVER_ATTRIBUTE* severAtt = new SEVER_ATTRIBUTE;
 			severAtt->name = severs[i]["name"].empty() ? "local" : severs[i]["name"].asString();
-			severAtt->address = severs[i]["address"].empty() ? "127.0.0.1" : severs[i]["address"].asString();
+			severAtt->address = haizeiSeverAddressForPlatform(
+				severs[i]["address"].empty() ? "127.0.0.1" : severs[i]["address"].asString());
 			severAtt->port = severs[i]["port"].empty() ? 25524 : severs[i]["port"].asInt();
 			severAtt->id = severs[i]["id"].empty() ? (i+1) : severs[i]["id"].asInt();
 			severAtt->state = SS_GENERAL;
@@ -203,7 +227,7 @@ void SeverConsts::_loadLocalSevers()
 		SEVER_ATTRIBUTE* severAtt = new SEVER_ATTRIBUTE;
 		severAtt->id = 1;
 		severAtt->name = "本地服";
-		severAtt->address = "127.0.0.1";
+		severAtt->address = haizeiSeverAddressForPlatform("127.0.0.1");
 		severAtt->port = 25524;
 		severAtt->state = SS_GENERAL;
 		mSeverList.insert(std::make_pair(severAtt->id,severAtt));

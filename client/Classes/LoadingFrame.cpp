@@ -115,7 +115,9 @@ void LoadingFrame::Enter( GamePrecedure* )
 		创建与（apk|ipa）loader程序的衔接
 	*/
 	libPlatformManager::getPlatform()->registerListener(this);
-    // [haizei] 注册游戏内登录页；此后 lib91::login() 不再弹 Win32 原生框、也不再自动登录
+    // [haizei] 使用游戏内嵌账号密码登录页（LoginPage），比 Win32 原生框更美观。
+    // 全平台统一注册；lib91::login() 无凭据时请求内嵌页，提交后由
+    // lib91_setLoginCredentials 走原登录广播流程。
     lib91_setLoginUiProvider(&haizei_showLoginUi, &haizei_loginSubmitted);
     s_needResendLogin = false;
     CCLOG("init severConst...");

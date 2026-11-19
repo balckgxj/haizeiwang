@@ -3,8 +3,10 @@
 #include "libOS.h"
 #include "libPlatform.h"
 
-// [haizei] 账号密码登录：凭据由游戏内 LoginPage 通过 lib91_setLoginCredentials 提供。
-// 不再读取 localAccount.txt 自动登录，也不再弹 Win32 原生登录框（仅作无 UI 时的兜底）。
+// [haizei] 默认使用更好看的游戏内嵌账号密码登录页（LoginPage）。
+// 客户端注册 LoginPage provider 后，lib91::login() 无凭据时请求内嵌页；
+// 凭据统一由 lib91_setLoginCredentials 写入并广播登录结果。
+// Win32 原生 LoginBox 仅作为未注册 provider 时的兜底。
 #include "cocos2d.h"
 
 bool lib91_mLogined = false;

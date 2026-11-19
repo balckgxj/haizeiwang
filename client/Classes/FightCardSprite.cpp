@@ -38,20 +38,22 @@ FightCardSprite::~FightCardSprite(void)
 
 void FightCardSprite::initUniforms()
 {
-	currentLife = glGetUniformLocation( getShaderProgram()->getProgram(), "currentLife");
-	displayLife = glGetUniformLocation( getShaderProgram()->getProgram(), "displayLife");
-	addColor = glGetUniformLocation( getShaderProgram()->getProgram(), "addColor");
-	flashType = glGetUniformLocation( getShaderProgram()->getProgram(), "flashType");
+	// [haizei] GLProgramState 按名字解析 uniform，无需缓存 location
 }
 
 void FightCardSprite::setUniforms()
 {
 	tick(GamePrecedure::Get()->getFrameTime());
 
-	getShaderProgram()->setUniformLocationWith1f(currentLife, currentLifeValue);
-	getShaderProgram()->setUniformLocationWith1f(displayLife, displayLifeValue);
-	getShaderProgram()->setUniformLocationWith4f(addColor,addColorValue.r,addColorValue.g,addColorValue.b,addColorValue.a);
-	getShaderProgram()->setUniformLocationWith1i(flashType, flashTypeValue);
+	// [haizei] 值写入本精灵独立的 GLProgramState（存储式），
+	// 渲染器执行 TrianglesCommand 时统一应用，不污染中帧 GL 状态
+	auto state = getGLProgramState();
+	if (!state)
+		return;
+	state->setUniformFloat("currentLife", currentLifeValue);
+	state->setUniformFloat("displayLife", displayLifeValue);
+	state->setUniformVec4("addColor", cocos2d::Vec4(addColorValue.r, addColorValue.g, addColorValue.b, addColorValue.a));
+	state->setUniformInt("flashType", (int)flashTypeValue);
 }
 
 FightCardSprite* FightCardSprite::create( const char* filename )

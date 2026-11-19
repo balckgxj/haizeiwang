@@ -443,6 +443,11 @@ load ccbi file: MessageBox.ccbi
   （含 `uniform sampler2D CC_Texture0;`），而 `client/Resources/fightcard.sha`
   自声明了同一 uniform → 编译重定义失败 → 战斗层整体回退为棕色方块。
   **修复**：删除 `.sha` 中自声明的 `CC_Texture0`（保留 varying）。
+- **后续实跑补充**：战斗人物错位/棕色块的最终根因是顶点程序不匹配。本项目 3.x 引擎把
+  `CCSprite` 默认程序改成 `SHADER_NAME_POSITION_TEXTURE_COLOR_NO_MVP`（Quad 顶点已是世界空间），
+  而 `SpriteShader` 仍用普通 MVP 顶点着色器，导致节点变换被重复相乘。`SpriteShader.cpp`
+  现已改用 `ccPositionTextureColor_noMVP_vert`，并移除 `skipflag` 调试开关，固定启用
+  `fightcard.sha` 的掉血灰度/受击闪白效果；实跑截图 `_tools/cmp/shader0/m0real_t06.png` 正常。
 - 结算页玩家名/敌人名：`FightPage.cpp`、`FightEndRankPage.cpp`、
   `WorldBossFightEnd.cpp`、`WorldBossJoinBattle.cpp` 中 ccbi 创建的
   `CCLabelTTF` 在 3.x 实际是 `cocos2d::Label`，`dynamic_cast<CCLabelTTF*>`

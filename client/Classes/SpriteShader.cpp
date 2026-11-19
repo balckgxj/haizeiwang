@@ -1,10 +1,21 @@
 
 #include "stdafx.h"
 
+#include <stdio.h>
+#include <map>
+#include <string>
+
 #include "SpriteShader.h"
 #include "cocos2d.h"
 
 USING_NS_CC;
+
+// [haizei] 着色器程序缓存：同一 shader 文件只编译/链接一次
+static std::map<std::string, CCGLProgram*>& shaderProgramCache()
+{
+	static std::map<std::string, CCGLProgram*> cache;
+	return cache;
+}
 
 SpriteShader::~SpriteShader(void)
 {
@@ -14,7 +25,13 @@ SpriteShader::~SpriteShader(void)
 
 void SpriteShader::listenBackToForeground(CCObject *obj)
 {
-	setShaderProgram(NULL);
+	// GL 上下文丢失：所有缓存的 program 都失效，清空后重建
+	for (auto& kv : shaderProgramCache())
+	{
+		kv.second->release();
+	}
+	shaderProgramCache().clear();
+
 	initProgram();
 }
 
@@ -28,7 +45,7 @@ bool SpriteShader::initWithTexture(CCTexture2D* texture, const CCRect& rect)
 // 图集帧加载的角色立绘必须在这里挂自定义程序，否则 fightcard.sha 永远不生效
 bool SpriteShader::initWithTexture(CCTexture2D* texture, const cocos2d::Rect& rect, bool rotated)
 {
-	if( CCSprite::initWithTexture(texture, rect, rotated) ) 
+	if (CCSprite::initWithTexture(texture, rect, rotated))
 	{
 		cocos2d::__NotificationCenter::getInstance()->addObserver(this, callfuncO_selector(SpriteShader::listenBackToForeground), EVNET_COME_TO_FOREGROUND, nullptr);
 
@@ -42,52 +59,54 @@ bool SpriteShader::initWithTexture(CCTexture2D* texture, const cocos2d::Rect& re
 
 void SpriteShader::initProgram()
 {
-	GLchar * fragSource = (GLchar*) CCString::createWithContentsOfFile(
-		cocos2d::FileUtils::getInstance()->fullPathForFilename(getShaderfile()).c_str())->getCString();
-	CCGLProgram* pProgram = new CCGLProgram();
-	pProgram->initWithVertexShaderByteArray(ccPositionTextureColor_vert, fragSource);
-	setShaderProgram(pProgram);
-	pProgram->release();
+	const char* file = getShaderfile();
+	const std::string key(file);
 
-	CHECK_GL_ERROR_DEBUG();
+	CCGLProgram* pProgram = NULL;
+	auto it = shaderProgramCache().find(key);
+	if (it != shaderProgramCache().end())
+	{
+		pProgram = it->second;
+	}
+	else
+	{
+		GLchar * fragSource = (GLchar*) CCString::createWithContentsOfFile(
+			cocos2d::FileUtils::getInstance()->fullPathForFilename(file).c_str())->getCString();
+		pProgram = new CCGLProgram(); // refcount=1，由缓存持有
 
-	getShaderProgram()->addAttribute(kCCAttributeNamePosition, kCCVertexAttrib_Position);
-	getShaderProgram()->addAttribute(kCCAttributeNameColor, kCCVertexAttrib_Color);
-	getShaderProgram()->addAttribute(kCCAttributeNameTexCoord, kCCVertexAttrib_TexCoords);
+		// [haizei] 本项目 3.x 引擎为兼容 2.x 坐标，把 CCSprite 默认程序改成了
+		// SHADER_NAME_POSITION_TEXTURE_COLOR_NO_MVP：Quad 顶点已是世界空间，
+		// 顶点着色器只乘 CC_PMatrix。自定义 shader 必须沿用同一个顶点着色器，
+		// 否则会再乘一次 CC_MVPMatrix，人物立绘错位/缩成色块。
+		pProgram->initWithVertexShaderByteArray(ccPositionTextureColor_noMVP_vert, fragSource);
 
-	CHECK_GL_ERROR_DEBUG();
+		pProgram->addAttribute(kCCAttributeNamePosition, kCCVertexAttrib_Position);
+		pProgram->addAttribute(kCCAttributeNameColor, kCCVertexAttrib_Color);
+		pProgram->addAttribute(kCCAttributeNameTexCoord, kCCVertexAttrib_TexCoords);
 
-	getShaderProgram()->link();
+		pProgram->link();
+		pProgram->updateUniforms();
 
-	CHECK_GL_ERROR_DEBUG();
+		shaderProgramCache()[key] = pProgram;
+	}
 
-	getShaderProgram()->updateUniforms();
-
-	CHECK_GL_ERROR_DEBUG();
+	// [haizei] 3.x 渲染器只认命令携带的 GLProgramState。
+	// 不能用 setGLProgram()/setShaderProgram()：那会拿到 program 级共享 state，
+	// 同 program 的所有精灵共用血量/闪白 uniform，互相覆盖。
+	// 每精灵独立 GLProgramState，渲染器执行命令时统一应用本精灵的 uniform。
+	cocos2d::GLProgramState* state = cocos2d::GLProgramState::create(pProgram);
+	setGLProgramState(state);
 
 	initUniforms();
-
-	CHECK_GL_ERROR_DEBUG();
 }
 
-// [haizei] 3.x 渲染入口。旧 2.x 版本在 draw() 里手工设置顶点属性并 glDrawArrays；
-// 3.x 改为命令管线，不能直接发 GL 调用。做法：
-//   1) 确保节点程序是自定义着色器（Sprite::draw 的 TrianglesCommand 用
-//      getGLProgramState()，它包装的正是节点 GLProgram）；
-//   2) use() 后调用子类 setUniforms() 把 currentLife/displayLife/addColor/
-//      flashType 上传（GLProgramState 只管内建 uniform，不会覆盖自定义值）；
-//   3) 交给 Sprite::draw 走标准命令渲染。
+// [haizei] 3.x 渲染入口。绝不能在这里 prog->use() / 直接 glUniform——
+// 那些是立即执行的 GL 调用，会污染当前激活的程序与纹理绑定，打乱渲染器批次。
+// 正确做法：把 uniform 值写进 GLProgramState（存储式），Sprite::draw
+// 生成的 TrianglesCommand 携带本精灵的 state，渲染器执行命令时统一应用。
 void SpriteShader::draw(cocos2d::Renderer* renderer, const cocos2d::Mat4& transform, uint32_t flags)
 {
-	CCGLProgram* prog = getShaderProgram();
-	if (prog)
-	{
-		if (getGLProgram() != prog)
-		{
-			setGLProgram(prog);
-		}
-		prog->use();
-		setUniforms();
-	}
+	setUniforms();
+
 	CCSprite::draw(renderer, transform, flags);
 }

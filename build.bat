@@ -6,6 +6,16 @@ rem    build.bat Release    编译 Release
 rem    build.bat Debug clean 清理后重配
 rem ---------------------------------------------------------------------------
 setlocal
+rem MSBuild/CL.exe 会把大小写不同的同名环境变量视为重复键并报 MSB6001，
+rem 因此构建前清掉代理变量（不影响系统/用户级设置）。
+set "http_proxy="
+set "https_proxy="
+set "all_proxy="
+set "no_proxy="
+set "HTTP_PROXY="
+set "HTTPS_PROXY="
+set "ALL_PROXY="
+set "NO_PROXY="
 set ROOT=%~dp0
 set CMAKE="E:\Softwares\VS2022BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
 set CFG=%1

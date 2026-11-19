@@ -1,22 +1,37 @@
 <?php
-// 动态区服列表：根据访问者来源自动选择可达的服务器地址
-// - Tailscale 网络 (100.64.0.0/10) -> 返回 Tailscale 地址
-// - 家里局域网/本机 -> 返回局域网地址 192.168.1.2
+// 动态区服列表：按访问来源自动选择可达地址（本地 / 局域网 / Tailscale 通用）
+//  - Tailscale (100.64.0.0/10) -> 100.65.143.49  (远程手机/电脑经 Tailscale 接入)
+//  - 本机回环 (127.0.0.1 / ::1) -> 127.0.0.1      (本地 PC 客户端)
+//  - 局域网 (192.168./10./172.16-31.) -> 192.168.1.2 (同网段设备)
+// 游戏服 DZM 绑定 0.0.0.0:25524，网关监听 0.0.0.0:8080，三个来源均可达。
 header('Content-Type: application/json; charset=utf-8');
 
 $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
 
-// Tailscale CGNAT 段: 100.64.0.0 - 100.127.255.255
-$parts = explode('.', $ip);
-$isTailscale = false;
-if (count($parts) >= 2 && $parts[0] === '100') {
-    $second = (int)$parts[1];
-    if ($second >= 64 && $second <= 127) {
-        $isTailscale = true;
-    }
+function ipIsTailscale($ip) {
+    if (strpos($ip, '.') === false) return false;
+    $p = explode('.', $ip);
+    return count($p) >= 2 && $p[0] === '100' && (int)$p[1] >= 64 && (int)$p[1] <= 127;
+}
+function ipIsLoopback($ip) {
+    return $ip === '127.0.0.1' || $ip === '::1';
+}
+function ipIsLan($ip) {
+    return strpos($ip, '192.168.') === 0
+        || strpos($ip, '10.') === 0
+        || preg_match('/^172\.(1[6-9]|2\d|3[01])\./', $ip) === 1;
 }
 
-$host = $isTailscale ? '100.65.143.49' : '192.168.1.2';
+if (ipIsTailscale($ip)) {
+    $host = '100.65.143.49';
+} elseif (ipIsLoopback($ip)) {
+    $host = '127.0.0.1';
+} elseif (ipIsLan($ip)) {
+    $host = '192.168.1.2';
+} else {
+    // 未知来源默认回环，保证本机始终可用
+    $host = '127.0.0.1';
+}
 
 echo '{
     "version": 1,
@@ -25,15 +40,15 @@ echo '{
 	"rootAddress": "http://' . $host . ':8080/gameserver/dzm/1.8/update.php",
     "defaultSeverID" : 1,
     "announcement":"http://' . $host . ':8080/gameserver/dzm/1.8/notice_ios.php",
-    "updateByteSize":0,
+	"updateByteSize":0,
 	"updateMsg": "转盘刷新显示问题修复",
-	"serverInUpdate": "，预计停服时间为3个小时左右，如有疑问请联系客服QQ：126367",
-	"serverInGray": "龙吟好，预计停服时间为3个小时左右，如有疑问请联系客服QQ：12367",
+	"serverInUpdate": "",
+	"serverInGray": "",
 	"inStoreUpdate":"http://127.0.0.1/download/91/index_ios.html",
 
-    "severs" :
-    [
+	"severs" :
+	[
 		{"id":1, "name":"A1-TEST" , "address":"' . $host . '", "port":25524, "state":"new"}
-    ]
+	]
 }
 ';
